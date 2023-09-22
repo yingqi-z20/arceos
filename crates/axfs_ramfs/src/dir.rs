@@ -2,7 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::sync::{Arc, Weak};
 use alloc::{string::String, vec::Vec};
 
-use axfs_vfs::{VfsDirEntry, VfsNodeAttr, VfsNodeOps, VfsNodeRef, VfsNodeType};
+use axfs_vfs::{VfsDirEntry, VfsNodeAttr, VfsNodeOps, VfsNodePerm, VfsNodeRef, VfsNodeType};
 use axfs_vfs::{VfsError, VfsResult};
 use spin::RwLock;
 
@@ -12,6 +12,7 @@ use crate::file::FileNode;
 ///
 /// It implements [`axfs_vfs::VfsNodeOps`].
 pub struct DirNode {
+    attr: RwLock<VfsNodeAttr>,
     this: Weak<DirNode>,
     parent: RwLock<Weak<dyn VfsNodeOps>>,
     children: RwLock<BTreeMap<String, VfsNodeRef>>,
@@ -20,6 +21,14 @@ pub struct DirNode {
 impl DirNode {
     pub(super) fn new(parent: Option<Weak<dyn VfsNodeOps>>) -> Arc<Self> {
         Arc::new_cyclic(|this| Self {
+            attr: RwLock::new(VfsNodeAttr::new(
+                VfsNodePerm::default_dir(),
+                0,
+                0,
+                VfsNodeType::Dir,
+                0,
+                0,
+            )),
             this: this.clone(),
             parent: RwLock::new(parent.unwrap_or_else(|| Weak::<Self>::new())),
             children: RwLock::new(BTreeMap::new()),
@@ -71,7 +80,7 @@ impl DirNode {
 
 impl VfsNodeOps for DirNode {
     fn get_attr(&self) -> VfsResult<VfsNodeAttr> {
-        Ok(VfsNodeAttr::new_dir(4096, 0))
+        Ok(*self.attr.read())
     }
 
     fn parent(&self) -> Option<VfsNodeRef> {

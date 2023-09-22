@@ -16,13 +16,19 @@ pub struct FatFileSystem {
 }
 
 pub struct FileWrapper<'a>(Mutex<File<'a, Disk, NullTimeProvider, LossyOemCpConverter>>);
+
 pub struct DirWrapper<'a>(Dir<'a, Disk, NullTimeProvider, LossyOemCpConverter>);
 
 unsafe impl Sync for FatFileSystem {}
+
 unsafe impl Send for FatFileSystem {}
+
 unsafe impl<'a> Send for FileWrapper<'a> {}
+
 unsafe impl<'a> Sync for FileWrapper<'a> {}
+
 unsafe impl<'a> Send for DirWrapper<'a> {}
+
 unsafe impl<'a> Sync for DirWrapper<'a> {}
 
 impl FatFileSystem {
@@ -68,9 +74,9 @@ impl VfsNodeOps for FileWrapper<'static> {
     fn get_attr(&self) -> VfsResult<VfsNodeAttr> {
         let size = self.0.lock().seek(SeekFrom::End(0)).map_err(as_vfs_err)?;
         let blocks = (size + BLOCK_SIZE as u64 - 1) / BLOCK_SIZE as u64;
-        // FAT fs doesn't support permissions, we just set everything to 755
-        let perm = VfsNodePerm::from_bits_truncate(0o755);
-        Ok(VfsNodeAttr::new(perm, VfsNodeType::File, size, blocks))
+        // FAT fs doesn't support permissions, we just set everything to 777
+        let perm = VfsNodePerm::from_bits_truncate(0o777);
+        Ok(VfsNodeAttr::new(perm, 0, 0, VfsNodeType::File, size, blocks))
     }
 
     fn read_at(&self, offset: u64, buf: &mut [u8]) -> VfsResult<usize> {
@@ -96,9 +102,11 @@ impl VfsNodeOps for DirWrapper<'static> {
     axfs_vfs::impl_vfs_dir_default! {}
 
     fn get_attr(&self) -> VfsResult<VfsNodeAttr> {
-        // FAT fs doesn't support permissions, we just set everything to 755
+        // FAT fs doesn't support permissions, we just set everything to 777
         Ok(VfsNodeAttr::new(
-            VfsNodePerm::from_bits_truncate(0o755),
+            VfsNodePerm::from_bits_truncate(0o777),
+            0,
+            0,
             VfsNodeType::Dir,
             BLOCK_SIZE as u64,
             1,
@@ -255,7 +263,7 @@ impl Seek for Disk {
             SeekFrom::Current(off) => self.position().checked_add_signed(off),
             SeekFrom::End(off) => size.checked_add_signed(off),
         }
-        .ok_or(())?;
+            .ok_or(())?;
         if new_pos > size {
             warn!("Seek beyond the end of the block device");
         }

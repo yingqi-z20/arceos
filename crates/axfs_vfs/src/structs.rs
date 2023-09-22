@@ -203,11 +203,11 @@ impl VfsNodeType {
 impl VfsNodeAttr {
     /// Creates a new `VfsNodeAttr` with the given permission mode, type, size
     /// and number of blocks.
-    pub const fn new(mode: VfsNodePerm, ty: VfsNodeType, size: u64, blocks: u64) -> Self {
+    pub const fn new(mode: VfsNodePerm, uid: u32, gid: u32, ty: VfsNodeType, size: u64, blocks: u64) -> Self {
         Self {
             mode,
-            uid: 0,
-            gid: 0,
+            uid,
+            gid,
             ty,
             size,
             blocks,

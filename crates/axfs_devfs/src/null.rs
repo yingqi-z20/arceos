@@ -9,6 +9,8 @@ impl VfsNodeOps for NullDev {
     fn get_attr(&self) -> VfsResult<VfsNodeAttr> {
         Ok(VfsNodeAttr::new(
             VfsNodePerm::default_file(),
+            0,
+            0,
             VfsNodeType::CharDevice,
             0,
             0,
