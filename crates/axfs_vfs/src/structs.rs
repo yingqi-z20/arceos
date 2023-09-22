@@ -10,6 +10,10 @@ pub struct FileSystemInfo;
 pub struct VfsNodeAttr {
     /// File permission mode.
     mode: VfsNodePerm,
+    /// File owner user id.
+    uid: u32,
+    /// File owner group id.
+    gid: u32,
     /// File type.
     ty: VfsNodeType,
     /// Total size, in bytes.
@@ -202,6 +206,8 @@ impl VfsNodeAttr {
     pub const fn new(mode: VfsNodePerm, ty: VfsNodeType, size: u64, blocks: u64) -> Self {
         Self {
             mode,
+            uid: 0,
+            gid: 0,
             ty,
             size,
             blocks,
@@ -212,6 +218,8 @@ impl VfsNodeAttr {
     pub const fn new_file(size: u64, blocks: u64) -> Self {
         Self {
             mode: VfsNodePerm::default_file(),
+            uid: 0,
+            gid: 0,
             ty: VfsNodeType::File,
             size,
             blocks,
@@ -223,6 +231,8 @@ impl VfsNodeAttr {
     pub const fn new_dir(size: u64, blocks: u64) -> Self {
         Self {
             mode: VfsNodePerm::default_dir(),
+            uid: 0,
+            gid: 0,
             ty: VfsNodeType::Dir,
             size,
             blocks,
