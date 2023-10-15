@@ -4,6 +4,7 @@
 #[macro_use]
 #[cfg(feature = "axstd")]
 extern crate axstd as std;
+extern crate alloc;
 
 macro_rules! path_to_str {
     ($path:expr) => {{
@@ -35,7 +36,7 @@ const MAX_CMD_LEN: usize = 256;
 
 fn print_prompt() {
     print!(
-        "arceos:{}$ ",
+        "root@arceos:{}# ",
         path_to_str!(std::env::current_dir().unwrap())
     );
     std::io::stdout().flush().unwrap();

@@ -34,6 +34,8 @@ pub mod sys {
     define_api! {
         /// Shutdown the whole system and all CPUs.
         pub fn ax_terminate() -> !;
+        /// Exit and restart the hole system.
+        pub fn ax_restart(exit_code: i32);
     }
 }
 
@@ -194,6 +196,9 @@ pub mod fs {
         pub fn ax_seek_file(file: &mut AxFileHandle, pos: AxSeekFrom) -> AxResult<u64>;
         /// Returns attributes of the file.
         pub fn ax_file_attr(file: &AxFileHandle) -> AxResult<AxFileAttr>;
+        /// Change attributes of the file.
+        pub fn ax_file_change_attr(file: &AxFileHandle, perm: u16, uid: u32, gid: u32) -> AxResult;
+
 
         /// Reads directory entries starts from the current position into the
         /// given buffer, returns the number of entries read.

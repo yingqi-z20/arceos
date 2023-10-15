@@ -108,6 +108,10 @@ impl VfsNodeOps for RootDirectory {
         self.main_fs.root_dir().get_attr()
     }
 
+    fn set_attr(&self, attr: VfsNodeAttr) -> VfsResult {
+        self.main_fs.root_dir().set_attr(attr)
+    }
+
     fn lookup(self: Arc<Self>, path: &str) -> VfsResult<VfsNodeRef> {
         self.lookup_mounted_fs(path, |fs, rest_path| fs.root_dir().lookup(rest_path))
     }

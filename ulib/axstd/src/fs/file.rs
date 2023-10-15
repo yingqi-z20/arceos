@@ -101,6 +101,16 @@ impl Metadata {
         self.0.perm()
     }
 
+    /// Returns the user of the file this metadata is for.
+    pub const fn uid(&self) -> u32 {
+        self.0.user_id()
+    }
+
+    /// Returns the group of the file this metadata is for.
+    pub const fn gid(&self) -> u32 {
+        self.0.group_id()
+    }
+
     /// Returns the total size of this file in bytes.
     pub const fn size(&self) -> u64 {
         self.0.size()
@@ -161,6 +171,11 @@ impl File {
     /// Queries metadata about the underlying file.
     pub fn metadata(&self) -> Result<Metadata> {
         api::ax_file_attr(&self.inner).map(Metadata)
+    }
+
+    /// Change metadata about the underlying file.
+    pub fn change_metadata(&self, perm: u16, uid: u32, gid: u32) -> Result<()> {
+        api::ax_file_change_attr(&self.inner, perm, uid, gid)
     }
 }
 

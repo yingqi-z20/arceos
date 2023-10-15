@@ -31,6 +31,11 @@ impl VfsNodeOps for FileNode {
         Ok(*self.attr.read())
     }
 
+    fn set_attr(&self, attr: VfsNodeAttr) -> VfsResult {
+        *self.attr.write() = attr;
+        Ok(())
+    }
+
     fn truncate(&self, size: u64) -> VfsResult {
         let mut content = self.content.write();
         if size < content.len() as u64 {

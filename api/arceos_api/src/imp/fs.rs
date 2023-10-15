@@ -1,6 +1,6 @@
 use alloc::string::String;
 use axerrno::AxResult;
-use axfs::fops::{Directory, File};
+use axfs::fops::{Directory, File, FileAttr};
 
 pub use axfs::fops::DirEntry as AxDirEntry;
 pub use axfs::fops::FileAttr as AxFileAttr;
@@ -56,6 +56,19 @@ pub fn ax_seek_file(file: &mut AxFileHandle, pos: AxSeekFrom) -> AxResult<u64> {
 
 pub fn ax_file_attr(file: &AxFileHandle) -> AxResult<AxFileAttr> {
     file.0.get_attr()
+}
+
+pub fn ax_file_change_attr(file: &AxFileHandle, perm: u16, uid: u32, gid: u32) -> AxResult {
+    let a = file.0.get_attr()?;
+    let new_attr = FileAttr::new(
+        a.perm_from_u16(perm),
+        uid,
+        gid,
+        a.file_type(),
+        a.size(),
+        a.blocks(),
+    );
+    file.0.set_attr(new_attr)
 }
 
 pub fn ax_read_dir(dir: &mut AxDirHandle, dirents: &mut [AxDirEntry]) -> AxResult<usize> {

@@ -16,17 +16,23 @@ macro_rules! print_err {
 
 type CmdHandler = fn(&str);
 
+const USER_MAP: [&str; 3] = ["root", "admin", "zyq"];
+const GROUP_MAP: [&str; 3] = ["root", "admin", "zyq"];
+
 const CMD_TABLE: &[(&str, CmdHandler)] = &[
     ("cat", do_cat),
     ("cd", do_cd),
     ("echo", do_echo),
+    ("halt", do_halt),
     ("exit", do_exit),
     ("help", do_help),
-    ("ls", do_ls),
+    ("ll", do_ll),
     ("mkdir", do_mkdir),
     ("pwd", do_pwd),
     ("rm", do_rm),
     ("uname", do_uname),
+    ("chmod", do_chmod),
+    ("chown", do_chown),
 ];
 
 fn file_type_to_char(ty: FileType) -> char {
@@ -66,7 +72,7 @@ const fn file_perm_to_rwx(mode: u32) -> [u8; 9] {
     perm
 }
 
-fn do_ls(args: &str) {
+fn do_ll(args: &str) {
     let current_dir = std::env::current_dir().unwrap();
     let args = if args.is_empty() {
         path_to_str!(current_dir)
@@ -82,7 +88,12 @@ fn do_ls(args: &str) {
         let file_type_char = file_type_to_char(file_type);
         let rwx = file_perm_to_rwx(metadata.permissions().mode());
         let rwx = unsafe { core::str::from_utf8_unchecked(&rwx) };
-        println!("{}{} {:>8} {}", file_type_char, rwx, size, entry);
+        let user = USER_MAP[metadata.uid() as usize];
+        let group = GROUP_MAP[metadata.gid() as usize];
+        println!(
+            "{}{} {:>8} {:>8} {:>8} {}",
+            file_type_char, rwx, user, group, size, entry
+        );
         Ok(())
     }
 
@@ -103,9 +114,9 @@ fn do_ls(args: &str) {
 
         for entry in entries {
             let entry = path_to_str!(entry);
-            let path = String::from(name) + "/" + entry;
+            let path = String::from(name) + entry;
             if let Err(e) = show_entry_info(&path, entry) {
-                print_err!("ls", path, e);
+                print_err!("ll", path, e);
             }
         }
         Ok(())
@@ -116,7 +127,7 @@ fn do_ls(args: &str) {
             println!();
         }
         if let Err(e) = list_one(name, name_count > 1) {
-            print_err!("ls", name, e);
+            print_err!("ll", name, e);
         }
     }
 }
@@ -267,9 +278,17 @@ fn do_help(_args: &str) {
     }
 }
 
-fn do_exit(_args: &str) {
+fn do_halt(_args: &str) {
     println!("Bye~");
-    std::process::exit(0);
+    std::process::halt(0);
+}
+
+fn do_exit(args: &str) {
+    std::process::exit(if args.is_empty() {
+        0
+    } else {
+        (args.as_bytes()[0] - b'0') as i32
+    });
 }
 
 pub fn run_cmd(line: &[u8]) {
@@ -290,4 +309,90 @@ fn split_whitespace(str: &str) -> (&str, &str) {
     let str = str.trim();
     str.find(char::is_whitespace)
         .map_or((str, ""), |n| (&str[..n], str[n + 1..].trim()))
+}
+
+fn do_chmod(args: &str) {
+    let mut recursive = false;
+    let mut mf = Vec::new();
+    for arg in args.split_whitespace() {
+        if arg == "-R" {
+            recursive = true;
+        } else {
+            mf.push(arg)
+        }
+    }
+    if mf.len() != 2 {
+        print_err!("chmod", "wrong operand");
+        return;
+    }
+    if recursive {
+        print_err!("chmod", "can't recursive chmod yet");
+    }
+    let m = mf[0].as_bytes();
+    let fname = mf[1];
+
+    fn chmod_one(fname: &str, perm: u16) -> io::Result<()> {
+        let file = File::open(fname)?;
+        let md = file.metadata().unwrap();
+        file.change_metadata(perm, md.uid(), md.gid())
+    }
+
+    let perm = (m[0] - b'0') as u16 * 64 + (m[1] - b'0') as u16 * 8 + (m[2] - b'0') as u16;
+    if let Err(e) = chmod_one(fname, perm) {
+        print_err!("chmod", fname, e);
+    }
+}
+
+fn do_chown(args: &str) {
+    let mut recursive = false;
+    let mut mf = Vec::new();
+    for arg in args.split_whitespace() {
+        if arg == "-R" {
+            recursive = true;
+        } else {
+            mf.push(arg)
+        }
+    }
+    if mf.len() != 2 {
+        print_err!("chown", "wrong operand");
+        return;
+    }
+    if recursive {
+        print_err!("chown", "can't recursive chown yet");
+    }
+    let ug = mf[0];
+    let fname = mf[1];
+    let (u, g) = ug
+        .find(':')
+        .map_or((ug, ""), |n| (&ug[..n], ug[n + 1..].trim()));
+    let mut uid: u32 = u32::MAX;
+    let mut gid: u32 = u32::MAX;
+    for i in 0..USER_MAP.len() {
+        if u == USER_MAP[i] {
+            uid = i as u32;
+        }
+    }
+    for i in 0..GROUP_MAP.len() {
+        if g == GROUP_MAP[i] {
+            gid = i as u32;
+        }
+    }
+    if uid == u32::MAX {
+        print_err!("chown", "invalid user");
+        return;
+    }
+    if gid == u32::MAX {
+        print_err!("chown", "invalid group");
+        return;
+    }
+
+    fn chown_one(fname: &str, uid: u32, gid: u32) -> io::Result<()> {
+        let file = File::open(fname)?;
+        let md = file.metadata().unwrap();
+        file.change_metadata(md.permissions().mode() as u16, uid, gid)
+    }
+
+    if let Err(e) = chown_one(fname, uid, gid) {
+        print_err!("chown", fname, e);
+    }
 }

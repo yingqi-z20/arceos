@@ -195,9 +195,14 @@ pub extern "C" fn rust_main(cpu_id: usize, dtb: usize) -> ! {
     axtask::exit(0);
     #[cfg(not(feature = "multitask"))]
     {
-        debug!("main task exited: exit_code={}", 0);
+        info!("main task exited: exit_code={}", 0);
         axhal::misc::terminate();
     }
+}
+
+pub fn restart(exit_code: i32) {
+    info!("main task exited: exit_code={}", exit_code as i8);
+    unsafe { main() };
 }
 
 #[cfg(feature = "alloc")]

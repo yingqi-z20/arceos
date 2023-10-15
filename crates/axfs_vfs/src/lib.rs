@@ -100,6 +100,11 @@ pub trait VfsNodeOps: Send + Sync {
         ax_err!(Unsupported)
     }
 
+    /// Set the attributes of the node.
+    fn set_attr(&self, _attr: VfsNodeAttr) -> VfsResult {
+        ax_err!(Unsupported)
+    }
+
     // file operations:
 
     /// Read data from the file at the given offset.

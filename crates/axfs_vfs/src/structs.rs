@@ -203,7 +203,14 @@ impl VfsNodeType {
 impl VfsNodeAttr {
     /// Creates a new `VfsNodeAttr` with the given permission mode, type, size
     /// and number of blocks.
-    pub const fn new(mode: VfsNodePerm, uid: u32, gid: u32, ty: VfsNodeType, size: u64, blocks: u64) -> Self {
+    pub const fn new(
+        mode: VfsNodePerm,
+        uid: u32,
+        gid: u32,
+        ty: VfsNodeType,
+        size: u64,
+        blocks: u64,
+    ) -> Self {
         Self {
             mode,
             uid,
@@ -254,9 +261,19 @@ impl VfsNodeAttr {
         self.mode
     }
 
-    /// Sets the permission of the node.
-    pub fn set_perm(&mut self, perm: VfsNodePerm) {
-        self.mode = perm
+    /// Returns the permission of the num.
+    pub const fn perm_from_u16(&self, num: u16) -> VfsNodePerm {
+        VfsNodePerm::from_bits_retain(num & 0o777)
+    }
+
+    /// Returns the user id of the node.
+    pub const fn user_id(&self) -> u32 {
+        self.uid
+    }
+
+    /// Returns the group id of the node.
+    pub const fn group_id(&self) -> u32 {
+        self.gid
     }
 
     /// Returns the type of the node.

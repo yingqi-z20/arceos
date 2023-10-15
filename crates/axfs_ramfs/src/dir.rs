@@ -83,6 +83,11 @@ impl VfsNodeOps for DirNode {
         Ok(*self.attr.read())
     }
 
+    fn set_attr(&self, attr: VfsNodeAttr) -> VfsResult {
+        *self.attr.write() = attr;
+        Ok(())
+    }
+
     fn parent(&self) -> Option<VfsNodeRef> {
         self.parent.read().upgrade()
     }

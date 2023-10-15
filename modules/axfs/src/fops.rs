@@ -238,7 +238,12 @@ impl File {
 
     /// Gets the file attributes.
     pub fn get_attr(&self) -> AxResult<FileAttr> {
-        self.node.access(Cap::empty())?.get_attr()
+        self.node.access(Cap::empty())?.get_attr() // TODO: verify Cap
+    }
+
+    /// Sets the file attributes.
+    pub fn set_attr(&self, attr: FileAttr) -> AxResult {
+        self.node.access(Cap::empty())?.set_attr(attr) // TODO: verify Cap
     }
 }
 
