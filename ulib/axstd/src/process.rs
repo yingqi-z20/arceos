@@ -10,6 +10,6 @@ pub fn exit(exit_code: i32) {
 }
 
 /// Shutdown the whole system.
-pub fn halt(_exit_code: i32) -> ! {
+pub fn halt(_exit_code: i32) {
     arceos_api::sys::ax_terminate();
 }

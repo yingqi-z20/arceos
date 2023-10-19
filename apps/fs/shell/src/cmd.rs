@@ -16,8 +16,8 @@ macro_rules! print_err {
 
 type CmdHandler = fn(&str);
 
-const USER_MAP: [&str; 3] = ["root", "admin", "zyq"];
-const GROUP_MAP: [&str; 3] = ["root", "admin", "zyq"];
+const USER_MAP: [&str; 3] = ["root", "admin", "guest"];
+const GROUP_MAP: [&str; 3] = ["root", "admin", "guest"];
 
 const CMD_TABLE: &[(&str, CmdHandler)] = &[
     ("cat", do_cat),
@@ -33,6 +33,8 @@ const CMD_TABLE: &[(&str, CmdHandler)] = &[
     ("uname", do_uname),
     ("chmod", do_chmod),
     ("chown", do_chown),
+    ("whoami", do_whoami),
+    ("su", do_su),
 ];
 
 fn file_type_to_char(ty: FileType) -> char {
@@ -279,11 +281,12 @@ fn do_help(_args: &str) {
 }
 
 fn do_halt(_args: &str) {
-    println!("Bye~");
     std::process::halt(0);
+    print_err!("halt", "Permission denied");
 }
 
 fn do_exit(args: &str) {
+    println!("Bye~");
     std::process::exit(if args.is_empty() {
         0
     } else {
@@ -394,5 +397,30 @@ fn do_chown(args: &str) {
 
     if let Err(e) = chown_one(fname, uid, gid) {
         print_err!("chown", fname, e);
+    }
+}
+
+fn do_whoami(_args: &str) {
+    let i = std::env::current_uid().unwrap();
+    println!("{}", USER_MAP[i as usize]);
+}
+
+fn do_su(args: &str) {
+    if !args.contains(char::is_whitespace) {
+        let mut uid: u32 = u32::MAX;
+        for i in 0..USER_MAP.len() {
+            if args == USER_MAP[i] {
+                uid = i as u32;
+            }
+        }
+        if uid == u32::MAX {
+            print_err!("su", "invalid user");
+            return;
+        }
+        if let Err(e) = std::env::set_current_uid(uid) {
+            print_err!("su", args, e);
+        }
+    } else {
+        print_err!("su", "too many arguments");
     }
 }

@@ -33,6 +33,7 @@ mod root;
 
 pub mod api;
 pub mod fops;
+mod user;
 
 use axdriver::{prelude::*, AxDeviceContainer};
 

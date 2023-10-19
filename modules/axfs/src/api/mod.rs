@@ -87,3 +87,13 @@ pub fn remove_file(path: &str) -> io::Result<()> {
 pub fn rename(old: &str, new: &str) -> io::Result<()> {
     crate::root::rename(old, new)
 }
+
+/// Returns the current user id as a [`u32`].
+pub fn current_uid() -> io::Result<u32> {
+    crate::user::current_uid()
+}
+
+/// Changes the current working directory to the specified path.
+pub fn set_current_uid(uid: u32) -> io::Result<()> {
+    crate::user::set_current_uid(uid)
+}

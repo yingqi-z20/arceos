@@ -35,9 +35,13 @@ const SPACE: u8 = b' ';
 const MAX_CMD_LEN: usize = 256;
 
 fn print_prompt() {
+    let i = std::env::current_uid().unwrap();
+    let user_map = ["root", "admin", "guest"];
     print!(
-        "root@arceos:{}# ",
-        path_to_str!(std::env::current_dir().unwrap())
+        "{}@arceos:{}{} ",
+        user_map[i as usize],
+        path_to_str!(std::env::current_dir().unwrap()),
+        if i == 0 { "#" } else { "$" }
     );
     std::io::stdout().flush().unwrap();
 }

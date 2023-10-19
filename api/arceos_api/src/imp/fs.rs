@@ -1,5 +1,5 @@
 use alloc::string::String;
-use axerrno::AxResult;
+use axerrno::{AxError, AxResult};
 use axfs::fops::{Directory, File, FileAttr};
 
 pub use axfs::fops::DirEntry as AxDirEntry;
@@ -97,4 +97,45 @@ pub fn ax_current_dir() -> AxResult<String> {
 
 pub fn ax_set_current_dir(path: &str) -> AxResult {
     axfs::api::set_current_dir(path)
+}
+
+pub fn ax_getuid() -> AxResult<u32> {
+    axfs::api::current_uid()
+}
+pub fn ax_setuid(uid: u32) -> AxResult {
+    if axfs::api::current_uid().is_ok_and(|uid| (uid == 0)) {
+        return axfs::api::set_current_uid(uid);
+    }
+    axhal::console::putchar(b'P');
+    axhal::console::putchar(b'a');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b'w');
+    axhal::console::putchar(b'o');
+    axhal::console::putchar(b'r');
+    axhal::console::putchar(b'd');
+    axhal::console::putchar(b':');
+    axhal::console::putchar(b' ');
+    let mut password = [0u8; 256];
+    let mut i: usize = 0;
+    while i < 256 {
+        if let Some(c) = axhal::console::getchar().map(|c| if c == b'\r' { b'\n' } else { c }) {
+            if c == b'\n' {
+                break;
+            }
+            password[i] = c;
+            i += 1;
+        }
+    }
+    axhal::console::putchar(b'\n');
+    if uid == 0 && (i != 6 || password[..6] != [b'1', b'2', b'3', b'4', b'5', b'6']) {
+        return Err(AxError::AuthenticationFailure);
+    }
+    if uid == 1 && (i != 5 || password[..5] != [b'a', b'd', b'm', b'i', b'n']) {
+        return Err(AxError::AuthenticationFailure);
+    }
+    if uid == 2 && (i != 5 || password[..5] != [b'g', b'u', b'e', b's', b't']) {
+        return Err(AxError::AuthenticationFailure);
+    }
+    axfs::api::set_current_uid(uid)
 }

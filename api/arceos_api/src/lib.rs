@@ -33,7 +33,7 @@ pub mod config {
 pub mod sys {
     define_api! {
         /// Shutdown the whole system and all CPUs.
-        pub fn ax_terminate() -> !;
+        pub fn ax_terminate();
         /// Exit and restart the hole system.
         pub fn ax_restart(exit_code: i32);
     }
@@ -223,6 +223,11 @@ pub mod fs {
         pub fn ax_current_dir() -> AxResult<alloc::string::String>;
         /// Changes the current working directory to the specified path.
         pub fn ax_set_current_dir(path: &str) -> AxResult;
+
+        /// Returns the current user id.
+        pub fn ax_getuid() -> AxResult<u32>;
+        /// Changes the current user id to the specified id.
+        pub fn ax_setuid(uid: u32) -> AxResult;
     }
 }
 

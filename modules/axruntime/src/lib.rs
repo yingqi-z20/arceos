@@ -200,8 +200,22 @@ pub extern "C" fn rust_main(cpu_id: usize, dtb: usize) -> ! {
     }
 }
 
+pub fn terminate() {
+    #[cfg(feature = "fs")]
+    {
+        if !axfs::api::current_uid().is_ok_and(|uid| uid == 0) {
+            return;
+        }
+    }
+    axhal::misc::terminate()
+}
+
 pub fn restart(exit_code: i32) {
     info!("main task exited: exit_code={}", exit_code as i8);
+    #[cfg(feature = "fs")]
+    {
+        axfs::api::set_current_uid(0).unwrap();
+    }
     unsafe { main() };
 }
 
