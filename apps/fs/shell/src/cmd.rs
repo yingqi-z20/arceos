@@ -161,17 +161,28 @@ fn do_cat(args: &str) {
 }
 
 fn do_echo(args: &str) {
-    fn echo_file(fname: &str, text_list: &[&str]) -> io::Result<()> {
+    fn echo_file(fname: &str, text_list: &[&str], append: bool) -> io::Result<()> {
+        let mut content: String = String::new();
+        if append {
+            let mut file = File::open(fname)?;
+            file.read_to_string(&mut content)?;
+        }
         let mut file = File::create(fname)?;
+        file.write_all(content.as_bytes())?;
         for text in text_list {
             file.write_all(text.as_bytes())?;
         }
         Ok(())
     }
 
-    if let Some(pos) = args.rfind('>') {
+    if let Some(mut pos) = args.rfind('>') {
+        let mut append = false;
+        if args.as_bytes()[pos - 1] == b'>' {
+            pos -= 1;
+            append = true;
+        }
         let text_before = args[..pos].trim();
-        let (fname, text_after) = split_whitespace(&args[pos + 1..]);
+        let (fname, text_after) = split_whitespace(&args[pos + 1 + append as usize..]);
         if fname.is_empty() {
             print_err!("echo", "no file specified");
             return;
@@ -183,7 +194,7 @@ fn do_echo(args: &str) {
             text_after,
             "\n",
         ];
-        if let Err(e) = echo_file(fname, &text_list) {
+        if let Err(e) = echo_file(fname, &text_list, append) {
             print_err!("echo", fname, e);
         }
     } else {

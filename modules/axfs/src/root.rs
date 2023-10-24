@@ -4,10 +4,11 @@
 
 use alloc::{string::String, sync::Arc, vec::Vec};
 use axerrno::{ax_err, AxError, AxResult};
-use axfs_vfs::{VfsNodeAttr, VfsNodeOps, VfsNodeRef, VfsNodeType, VfsOps, VfsResult};
+use axfs_vfs::{VfsNodeAttr, VfsNodeOps, VfsNodePerm, VfsNodeRef, VfsNodeType, VfsOps, VfsResult};
 use axsync::Mutex;
 use lazy_init::LazyInit;
 
+use crate::user::{current_gid, current_uid};
 use crate::{api::FileType, fs, mounts};
 
 static CURRENT_DIR_PATH: Mutex<String> = Mutex::new(String::new());
@@ -168,8 +169,8 @@ pub(crate) fn init_rootfs(disk: crate::dev::Disk) {
 
     #[cfg(feature = "ramfs")]
     root_dir
-        .mount("/tmp", mounts::ramfs())
-        .expect("failed to mount ramfs at /tmp");
+        .mount("/home", mounts::ramfs())
+        .expect("failed to mount ramfs at /home");
 
     // Mount another ramfs as procfs
     #[cfg(feature = "procfs")]
@@ -225,13 +226,34 @@ pub(crate) fn create_file(dir: Option<&VfsNodeRef>, path: &str) -> AxResult<VfsN
     }
     let parent = parent_node_of(dir, path);
     parent.create(path, VfsNodeType::File)?;
-    parent.lookup(path)
+    let new_node = parent.lookup(path);
+    new_node?.set_attr(VfsNodeAttr::new(
+        VfsNodePerm::default_file(),
+        current_uid()?,
+        current_gid()?,
+        VfsNodeType::File,
+        0,
+        0,
+    ))?;
+    parent_node_of(dir, path).lookup(path)
 }
 
 pub(crate) fn create_dir(dir: Option<&VfsNodeRef>, path: &str) -> AxResult {
     match lookup(dir, path) {
         Ok(_) => ax_err!(AlreadyExists),
-        Err(AxError::NotFound) => parent_node_of(dir, path).create(path, VfsNodeType::Dir),
+        Err(AxError::NotFound) => {
+            let parent = parent_node_of(dir, path);
+            parent.create(path, VfsNodeType::Dir)?;
+            let new_node = parent.lookup(path);
+            new_node?.set_attr(VfsNodeAttr::new(
+                VfsNodePerm::default_dir(),
+                current_uid()?,
+                current_gid()?,
+                VfsNodeType::Dir,
+                0,
+                0,
+            ))
+        }
         Err(e) => Err(e),
     }
 }

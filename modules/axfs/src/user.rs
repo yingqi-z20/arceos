@@ -7,6 +7,10 @@ pub(crate) fn current_uid() -> AxResult<u32> {
     Ok(*UID.lock())
 }
 
+pub(crate) fn current_gid() -> AxResult<u32> {
+    current_uid()
+}
+
 pub(crate) fn set_current_uid(uid: u32) -> AxResult {
     *UID.lock() = uid;
     Ok(())

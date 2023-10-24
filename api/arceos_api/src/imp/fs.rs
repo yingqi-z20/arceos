@@ -118,10 +118,16 @@ pub fn ax_setuid(uid: u32) -> AxResult {
     axhal::console::putchar(b' ');
     let mut password = [0u8; 256];
     let mut i: usize = 0;
+    const DL: u8 = b'\x7f';
+    const BS: u8 = b'\x08';
     while i < 256 {
         if let Some(c) = axhal::console::getchar().map(|c| if c == b'\r' { b'\n' } else { c }) {
             if c == b'\n' {
                 break;
+            }
+            if c == DL || c == BS {
+                i = i.saturating_sub(1);
+                continue;
             }
             password[i] = c;
             i += 1;

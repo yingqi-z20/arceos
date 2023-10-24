@@ -214,7 +214,7 @@ pub fn restart(exit_code: i32) {
     info!("main task exited: exit_code={}", exit_code as i8);
     #[cfg(feature = "fs")]
     {
-        axfs::api::set_current_uid(0).unwrap();
+        axfs::api::set_current_uid(2).unwrap();
     }
     unsafe { main() };
 }

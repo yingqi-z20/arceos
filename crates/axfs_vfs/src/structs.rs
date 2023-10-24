@@ -78,9 +78,10 @@ pub struct VfsDirEntry {
 impl VfsNodePerm {
     /// Returns the default permission for a file.
     ///
-    /// The default permission is `0o666` (owner/group/others can read and write).
+    /// The default permission is `0o644` (owner can read and write,
+    /// group/others can read only).
     pub const fn default_file() -> Self {
-        Self::from_bits_truncate(0o666)
+        Self::from_bits_truncate(0o644)
     }
 
     /// Returns the default permission for a directory.
@@ -145,6 +146,36 @@ impl VfsNodePerm {
     /// Whether the owner has execute permission.
     pub const fn owner_executable(&self) -> bool {
         self.contains(Self::OWNER_EXEC)
+    }
+
+    /// Whether the group has read permission.
+    pub const fn group_readable(&self) -> bool {
+        self.contains(Self::GROUP_READ)
+    }
+
+    /// Whether the group has write permission.
+    pub const fn group_writable(&self) -> bool {
+        self.contains(Self::GROUP_WRITE)
+    }
+
+    /// Whether the group has execute permission.
+    pub const fn group_executable(&self) -> bool {
+        self.contains(Self::GROUP_EXEC)
+    }
+
+    /// Whether others has read permission.
+    pub const fn other_readable(&self) -> bool {
+        self.contains(Self::OTHER_READ)
+    }
+
+    /// Whether others has write permission.
+    pub const fn other_writable(&self) -> bool {
+        self.contains(Self::OTHER_WRITE)
+    }
+
+    /// Whether others has execute permission.
+    pub const fn other_executable(&self) -> bool {
+        self.contains(Self::OTHER_EXEC)
     }
 }
 

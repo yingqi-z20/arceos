@@ -10,6 +10,7 @@ use core::fmt;
 pub use crate::dev::Disk;
 #[cfg(feature = "myfs")]
 pub use crate::fs::myfs::MyFileSystemIf;
+use crate::user;
 
 /// Alias of [`axfs_vfs::VfsNodeType`].
 pub type FileType = axfs_vfs::VfsNodeType;
@@ -144,7 +145,7 @@ impl File {
             return ax_err!(IsADirectory);
         }
         let access_cap = opts.into();
-        if !perm_to_cap(attr.perm()).contains(access_cap) {
+        if !perm_to_cap(attr.perm(), attr.user_id(), attr.group_id()).contains(access_cap) {
             return ax_err!(PermissionDenied);
         }
 
@@ -263,7 +264,7 @@ impl Directory {
             return ax_err!(NotADirectory);
         }
         let access_cap = opts.into();
-        if !perm_to_cap(attr.perm()).contains(access_cap) {
+        if !perm_to_cap(attr.perm(), attr.user_id(), attr.group_id()).contains(access_cap) {
             return ax_err!(PermissionDenied);
         }
 
@@ -393,16 +394,35 @@ impl From<&OpenOptions> for Cap {
     }
 }
 
-fn perm_to_cap(perm: FilePerm) -> Cap {
+fn perm_to_cap(perm: FilePerm, uid: u32, _gid: u32) -> Cap {
+    let current_uid = user::current_uid().unwrap();
     let mut cap = Cap::empty();
-    if perm.owner_readable() {
+    if current_uid == 0 {
         cap |= Cap::READ;
-    }
-    if perm.owner_writable() {
         cap |= Cap::WRITE;
-    }
-    if perm.owner_executable() {
         cap |= Cap::EXECUTE;
+        return cap;
+    }
+    if current_uid == uid {
+        if perm.owner_readable() {
+            cap |= Cap::READ;
+        }
+        if perm.owner_writable() {
+            cap |= Cap::WRITE;
+        }
+        if perm.owner_executable() {
+            cap |= Cap::EXECUTE;
+        }
+    } else {
+        if perm.other_readable() {
+            cap |= Cap::READ;
+        }
+        if perm.other_writable() {
+            cap |= Cap::WRITE;
+        }
+        if perm.other_executable() {
+            cap |= Cap::EXECUTE;
+        }
     }
     cap
 }
