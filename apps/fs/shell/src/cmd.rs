@@ -116,7 +116,7 @@ fn do_ll(args: &str) {
 
         for entry in entries {
             let entry = path_to_str!(entry);
-            let path = String::from(name) + entry;
+            let path = String::from(name) + if name.ends_with('/') { "" } else { "/" } + entry;
             if let Err(e) = show_entry_info(&path, entry) {
                 print_err!("ll", path, e);
             }
