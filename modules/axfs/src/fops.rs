@@ -10,7 +10,7 @@ use core::fmt;
 pub use crate::dev::Disk;
 #[cfg(feature = "myfs")]
 pub use crate::fs::myfs::MyFileSystemIf;
-use crate::user;
+use crate::user::{current_gid, current_uid};
 
 /// Alias of [`axfs_vfs::VfsNodeType`].
 pub type FileType = axfs_vfs::VfsNodeType;
@@ -41,6 +41,7 @@ pub struct OpenOptions {
     // generic
     read: bool,
     write: bool,
+    execute: bool,
     append: bool,
     truncate: bool,
     create: bool,
@@ -57,6 +58,7 @@ impl OpenOptions {
             // generic
             read: false,
             write: false,
+            execute: false,
             append: false,
             truncate: false,
             create: false,
@@ -74,6 +76,10 @@ impl OpenOptions {
     pub fn write(&mut self, write: bool) {
         self.write = write;
     }
+    /// Sets the option for execute access.
+    pub fn execute(&mut self, execute: bool) {
+        self.execute = execute;
+    }
     /// Sets the option for the append mode.
     pub fn append(&mut self, append: bool) {
         self.append = append;
@@ -90,36 +96,29 @@ impl OpenOptions {
     pub fn create_new(&mut self, create_new: bool) {
         self.create_new = create_new;
     }
-
-    const fn is_valid(&self) -> bool {
-        if !self.read && !self.write && !self.append {
-            return false;
-        }
-        match (self.write, self.append) {
-            (true, false) => {}
-            (false, false) => {
-                if self.truncate || self.create || self.create_new {
-                    return false;
-                }
-            }
-            (_, true) => {
-                if self.truncate && !self.create_new {
-                    return false;
-                }
-            }
-        }
-        true
-    }
 }
 
 impl File {
     fn _open_at(dir: Option<&VfsNodeRef>, path: &str, opts: &OpenOptions) -> AxResult<Self> {
         debug!("open file: {} {:?}", path, opts);
-        if !opts.is_valid() {
-            return ax_err!(InvalidInput);
-        }
 
         let node_option = crate::root::lookup(dir, path);
+        if node_option.is_ok() {
+            let mut exec_dir = node_option.clone().unwrap().parent();
+            while exec_dir.is_some() {
+                if !perm_to_cap(
+                    exec_dir.clone().unwrap().get_attr()?.perm(),
+                    current_uid()?,
+                    current_gid()?,
+                )
+                .contains(Cap::EXECUTE)
+                {
+                    return ax_err!(PermissionDenied);
+                }
+                exec_dir = exec_dir.clone().unwrap().parent();
+            }
+        }
+
         let node = if opts.create || opts.create_new {
             match node_option {
                 Ok(node) => {
@@ -239,26 +238,34 @@ impl File {
 
     /// Gets the file attributes.
     pub fn get_attr(&self) -> AxResult<FileAttr> {
-        self.node.access(Cap::empty())?.get_attr() // TODO: verify Cap
+        self.node.access(Cap::empty())?.get_attr()
     }
 
     /// Sets the file attributes.
     pub fn set_attr(&self, attr: FileAttr) -> AxResult {
-        self.node.access(Cap::empty())?.set_attr(attr) // TODO: verify Cap
+        self.node.access(Cap::empty())?.set_attr(attr)
     }
 }
 
 impl Directory {
     fn _open_dir_at(dir: Option<&VfsNodeRef>, path: &str, opts: &OpenOptions) -> AxResult<Self> {
         debug!("open dir: {}", path);
-        if !opts.read {
-            return ax_err!(InvalidInput);
-        }
-        if opts.create || opts.create_new || opts.write || opts.append || opts.truncate {
-            return ax_err!(InvalidInput);
-        }
 
         let node = crate::root::lookup(dir, path)?;
+        let mut exec_dir = node.clone().parent();
+        while exec_dir.is_some() {
+            if !perm_to_cap(
+                exec_dir.clone().unwrap().get_attr()?.perm(),
+                current_uid()?,
+                current_gid()?,
+            )
+            .contains(Cap::EXECUTE)
+            {
+                return ax_err!(PermissionDenied);
+            }
+            exec_dir = exec_dir.clone().unwrap().parent();
+        }
+
         let attr = node.get_attr()?;
         if !attr.is_dir() {
             return ax_err!(NotADirectory);
@@ -373,6 +380,7 @@ impl fmt::Debug for OpenOptions {
         }
         fmt_opt!(read, "READ");
         fmt_opt!(write, "WRITE");
+        fmt_opt!(execute, "EXECUTE");
         fmt_opt!(append, "APPEND");
         fmt_opt!(truncate, "TRUNC");
         fmt_opt!(create, "CREATE");
@@ -390,12 +398,15 @@ impl From<&OpenOptions> for Cap {
         if opts.write | opts.append {
             cap |= Cap::WRITE;
         }
+        if opts.execute {
+            cap |= Cap::EXECUTE;
+        }
         cap
     }
 }
 
-fn perm_to_cap(perm: FilePerm, uid: u32, _gid: u32) -> Cap {
-    let current_uid = user::current_uid().unwrap();
+pub fn perm_to_cap(perm: FilePerm, uid: u32, _gid: u32) -> Cap {
+    let current_uid = current_uid().unwrap();
     let mut cap = Cap::empty();
     if current_uid == 0 {
         cap |= Cap::READ;

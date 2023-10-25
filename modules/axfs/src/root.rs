@@ -6,8 +6,10 @@ use alloc::{string::String, sync::Arc, vec::Vec};
 use axerrno::{ax_err, AxError, AxResult};
 use axfs_vfs::{VfsNodeAttr, VfsNodeOps, VfsNodePerm, VfsNodeRef, VfsNodeType, VfsOps, VfsResult};
 use axsync::Mutex;
+use capability::Cap;
 use lazy_init::LazyInit;
 
+use crate::fops::perm_to_cap;
 use crate::user::{current_gid, current_uid};
 use crate::{api::FileType, fs, mounts};
 
@@ -263,7 +265,7 @@ pub(crate) fn remove_file(dir: Option<&VfsNodeRef>, path: &str) -> AxResult {
     let attr = node.get_attr()?;
     if attr.is_dir() {
         ax_err!(IsADirectory)
-    } else if !attr.perm().owner_writable() {
+    } else if !perm_to_cap(attr.perm(), current_uid()?, current_gid()?).contains(Cap::WRITE) {
         ax_err!(PermissionDenied)
     } else {
         parent_node_of(dir, path).remove(path)
@@ -292,7 +294,7 @@ pub(crate) fn remove_dir(dir: Option<&VfsNodeRef>, path: &str) -> AxResult {
     let attr = node.get_attr()?;
     if !attr.is_dir() {
         ax_err!(NotADirectory)
-    } else if !attr.perm().owner_writable() {
+    } else if !perm_to_cap(attr.perm(), current_uid()?, current_gid()?).contains(Cap::WRITE) {
         ax_err!(PermissionDenied)
     } else {
         parent_node_of(dir, path).remove(path)
@@ -318,7 +320,7 @@ pub(crate) fn set_current_dir(path: &str) -> AxResult {
     let attr = node.get_attr()?;
     if !attr.is_dir() {
         ax_err!(NotADirectory)
-    } else if !attr.perm().owner_executable() {
+    } else if !perm_to_cap(attr.perm(), current_uid()?, current_gid()?).contains(Cap::EXECUTE) {
         ax_err!(PermissionDenied)
     } else {
         *CURRENT_DIR.lock() = node;

@@ -1,5 +1,7 @@
 use alloc::string::String;
+use axerrno::AxError::PermissionDenied;
 use axerrno::{AxError, AxResult};
+use axfs::api::current_uid;
 use axfs::fops::{Directory, File, FileAttr};
 
 pub use axfs::fops::DirEntry as AxDirEntry;
@@ -60,6 +62,9 @@ pub fn ax_file_attr(file: &AxFileHandle) -> AxResult<AxFileAttr> {
 
 pub fn ax_file_change_attr(file: &AxFileHandle, perm: u16, uid: u32, gid: u32) -> AxResult {
     let a = file.0.get_attr()?;
+    if current_uid().is_ok_and(|uid| (uid != 0 && uid != a.user_id())) {
+        return Err(PermissionDenied);
+    }
     let new_attr = FileAttr::new(
         a.perm_from_u16(perm),
         uid,
@@ -103,7 +108,7 @@ pub fn ax_getuid() -> AxResult<u32> {
     axfs::api::current_uid()
 }
 pub fn ax_setuid(uid: u32) -> AxResult {
-    if axfs::api::current_uid().is_ok_and(|uid| (uid == 0)) {
+    if current_uid().is_ok_and(|uid| (uid == 0)) {
         return axfs::api::set_current_uid(uid);
     }
     axhal::console::putchar(b'P');

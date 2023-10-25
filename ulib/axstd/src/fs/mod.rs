@@ -39,7 +39,7 @@ pub fn write<C: AsRef<[u8]>>(path: &str, contents: C) -> io::Result<()> {
 /// Given a path, query the file system to get information about a file,
 /// directory, etc.
 pub fn metadata(path: &str) -> io::Result<Metadata> {
-    File::open(path)?.metadata()
+    File::check(path)?.metadata()
 }
 
 /// Returns an iterator over the entries within a directory.

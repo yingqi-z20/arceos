@@ -40,6 +40,11 @@ impl OpenOptions {
         self
     }
 
+    /// Sets the option for execute access.
+    pub fn execute(&mut self, execute: bool) -> &mut Self {
+        self.0.execute(execute);
+        self
+    }
     /// Sets the option for the append mode.
     pub fn append(&mut self, append: bool) -> &mut Self {
         self.0.append(append);
@@ -134,6 +139,11 @@ impl fmt::Debug for Metadata {
 }
 
 impl File {
+    /// Attempts to check a file without any operation.
+    pub fn check(path: &str) -> Result<Self> {
+        OpenOptions::new().open(path)
+    }
+
     /// Attempts to open a file in read-only mode.
     pub fn open(path: &str) -> Result<Self> {
         OpenOptions::new().read(true).open(path)
@@ -155,6 +165,11 @@ impl File {
             .write(true)
             .create_new(true)
             .open(path)
+    }
+
+    /// Attempts to open a file in read-execute mode.
+    pub fn execute(path: &str) -> Result<Self> {
+        OpenOptions::new().read(true).execute(true).open(path)
     }
 
     /// Returns a new OpenOptions object.

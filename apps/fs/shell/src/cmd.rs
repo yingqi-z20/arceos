@@ -1,3 +1,4 @@
+use alloc::string::ToString;
 use std::fs::{self, File, FileType};
 use std::io::{self, prelude::*};
 use std::{string::String, vec::Vec};
@@ -16,8 +17,21 @@ macro_rules! print_err {
 
 type CmdHandler = fn(&str);
 
-const USER_MAP: [&str; 3] = ["root", "admin", "guest"];
-const GROUP_MAP: [&str; 3] = ["root", "admin", "guest"];
+pub fn user_name(uid: u32) -> String {
+    const USER_MAP: [&str; 3] = ["root", "admin", "guest"];
+    let uid_string = uid.to_string();
+    let uid_str = uid_string.as_str();
+    let user = USER_MAP.get(uid as usize).unwrap_or(&uid_str);
+    user.to_string()
+}
+
+pub fn group_name(gid: u32) -> String {
+    const GROUP_MAP: [&str; 3] = ["root", "admin", "guest"];
+    let gid_string = gid.to_string();
+    let gid_str = gid_string.as_str();
+    let group = GROUP_MAP.get(gid as usize).unwrap_or(&gid_str);
+    group.to_string()
+}
 
 const CMD_TABLE: &[(&str, CmdHandler)] = &[
     ("cat", do_cat),
@@ -90,11 +104,14 @@ fn do_ll(args: &str) {
         let file_type_char = file_type_to_char(file_type);
         let rwx = file_perm_to_rwx(metadata.permissions().mode());
         let rwx = unsafe { core::str::from_utf8_unchecked(&rwx) };
-        let user = USER_MAP[metadata.uid() as usize];
-        let group = GROUP_MAP[metadata.gid() as usize];
         println!(
             "{}{} {:>8} {:>8} {:>8} {}",
-            file_type_char, rwx, user, group, size, entry
+            file_type_char,
+            rwx,
+            user_name(metadata.uid()),
+            group_name(metadata.gid()),
+            size,
+            entry
         );
         Ok(())
     }
@@ -306,6 +323,16 @@ fn do_exit(args: &str) {
 }
 
 pub fn run_cmd(line: &[u8]) {
+    fn execute_file(fname: &str) -> io::Result<()> {
+        let mut file = File::execute(fname)?;
+        let mut content: String = String::new();
+        file.read_to_string(&mut content)?;
+        let commands: Vec<&str> = content.split('\n').collect();
+        for command in commands {
+            run_cmd(command.as_bytes());
+        }
+        Ok(())
+    }
     let line_str = unsafe { core::str::from_utf8_unchecked(line) };
     let (cmd, args) = split_whitespace(line_str);
     if !cmd.is_empty() {
@@ -314,6 +341,12 @@ pub fn run_cmd(line: &[u8]) {
                 func(args);
                 return;
             }
+        }
+        if cmd.contains('/') {
+            if let Err(e) = execute_file(cmd) {
+                println!("{}: {}", cmd, e);
+            }
+            return;
         }
         println!("{}: command not found", cmd);
     }
@@ -346,7 +379,7 @@ fn do_chmod(args: &str) {
     let fname = mf[1];
 
     fn chmod_one(fname: &str, perm: u16) -> io::Result<()> {
-        let file = File::open(fname)?;
+        let file = File::check(fname)?;
         let md = file.metadata().unwrap();
         file.change_metadata(perm, md.uid(), md.gid())
     }
@@ -381,14 +414,14 @@ fn do_chown(args: &str) {
         .map_or((ug, ""), |n| (&ug[..n], ug[n + 1..].trim()));
     let mut uid: u32 = u32::MAX;
     let mut gid: u32 = u32::MAX;
-    for i in 0..USER_MAP.len() {
-        if u == USER_MAP[i] {
-            uid = i as u32;
+    for i in 0..3 {
+        if u == user_name(i) {
+            uid = i;
         }
     }
-    for i in 0..GROUP_MAP.len() {
-        if g == GROUP_MAP[i] {
-            gid = i as u32;
+    for i in 0..3 {
+        if g == group_name(i) {
+            gid = i;
         }
     }
     if uid == u32::MAX {
@@ -401,7 +434,7 @@ fn do_chown(args: &str) {
     }
 
     fn chown_one(fname: &str, uid: u32, gid: u32) -> io::Result<()> {
-        let file = File::open(fname)?;
+        let file = File::check(fname)?;
         let md = file.metadata().unwrap();
         file.change_metadata(md.permissions().mode() as u16, uid, gid)
     }
@@ -413,14 +446,14 @@ fn do_chown(args: &str) {
 
 fn do_whoami(_args: &str) {
     let i = std::env::current_uid().unwrap();
-    println!("{}", USER_MAP[i as usize]);
+    println!("{}", user_name(i));
 }
 
 fn do_su(args: &str) {
     if !args.contains(char::is_whitespace) {
         let mut uid: u32 = u32::MAX;
-        for i in 0..USER_MAP.len() {
-            if args == USER_MAP[i] {
+        for i in 0..3 {
+            if args == user_name(i) {
                 uid = i as u32;
             }
         }
