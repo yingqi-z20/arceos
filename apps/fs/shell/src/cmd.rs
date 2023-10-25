@@ -49,6 +49,7 @@ const CMD_TABLE: &[(&str, CmdHandler)] = &[
     ("chown", do_chown),
     ("whoami", do_whoami),
     ("su", do_su),
+    ("if_test_exist", do_if_test_exist),
 ];
 
 fn file_type_to_char(ty: FileType) -> char {
@@ -323,7 +324,7 @@ fn do_exit(args: &str) {
 }
 
 pub fn run_cmd(line: &[u8]) {
-    fn execute_file(fname: &str) -> io::Result<()> {
+    fn execute_file(fname: &str, _args: &str) -> io::Result<()> {
         let mut file = File::execute(fname)?;
         let mut content: String = String::new();
         file.read_to_string(&mut content)?;
@@ -333,22 +334,30 @@ pub fn run_cmd(line: &[u8]) {
         }
         Ok(())
     }
-    let line_str = unsafe { core::str::from_utf8_unchecked(line) };
-    let (cmd, args) = split_whitespace(line_str);
-    if !cmd.is_empty() {
-        for (name, func) in CMD_TABLE {
-            if cmd == *name {
-                func(args);
-                return;
+
+    let line = unsafe { core::str::from_utf8_unchecked(line) };
+    let commands: Vec<&str> = line.split(';').collect();
+    for line_str in commands {
+        let (cmd, args) = split_whitespace(line_str);
+        if !cmd.is_empty() {
+            if cmd.contains('/') {
+                if let Err(e) = execute_file(cmd, args) {
+                    println!("{}: {}", cmd, e);
+                }
+                continue;
+            }
+            let mut inner_cmd = false;
+            for (name, func) in CMD_TABLE {
+                if cmd == *name {
+                    func(args);
+                    inner_cmd = true;
+                    break;
+                }
+            }
+            if !inner_cmd {
+                println!("{}: command not found", cmd);
             }
         }
-        if cmd.contains('/') {
-            if let Err(e) = execute_file(cmd) {
-                println!("{}: {}", cmd, e);
-            }
-            return;
-        }
-        println!("{}: command not found", cmd);
     }
 }
 
@@ -466,5 +475,12 @@ fn do_su(args: &str) {
         }
     } else {
         print_err!("su", "too many arguments");
+    }
+}
+
+fn do_if_test_exist(args: &str) {
+    let (fname, cmd) = split_whitespace(args);
+    if File::check(fname).is_ok() {
+        run_cmd(cmd.as_bytes());
     }
 }
