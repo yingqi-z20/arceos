@@ -106,12 +106,8 @@ impl File {
         if node_option.is_ok() {
             let mut exec_dir = node_option.clone().unwrap().parent();
             while exec_dir.is_some() {
-                if !perm_to_cap(
-                    exec_dir.clone().unwrap().get_attr()?.perm(),
-                    current_uid()?,
-                    current_gid()?,
-                )
-                .contains(Cap::EXECUTE)
+                let attr = exec_dir.clone().unwrap().get_attr()?;
+                if !perm_to_cap(attr.perm(), attr.user_id(), attr.group_id()).contains(Cap::EXECUTE)
                 {
                     return ax_err!(PermissionDenied);
                 }
@@ -254,13 +250,8 @@ impl Directory {
         let node = crate::root::lookup(dir, path)?;
         let mut exec_dir = node.clone().parent();
         while exec_dir.is_some() {
-            if !perm_to_cap(
-                exec_dir.clone().unwrap().get_attr()?.perm(),
-                current_uid()?,
-                current_gid()?,
-            )
-            .contains(Cap::EXECUTE)
-            {
+            let attr = exec_dir.clone().unwrap().get_attr()?;
+            if !perm_to_cap(attr.perm(), attr.user_id(), attr.group_id()).contains(Cap::EXECUTE) {
                 return ax_err!(PermissionDenied);
             }
             exec_dir = exec_dir.clone().unwrap().parent();

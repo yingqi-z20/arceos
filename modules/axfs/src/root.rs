@@ -183,6 +183,9 @@ pub(crate) fn init_rootfs(disk: crate::dev::Disk) {
         root_dir
             .mount("/root", mounts::ramfs())
             .expect("failed to mount ramfs at /root");
+        root_dir
+            .mount("/bin", mounts::ramfs())
+            .expect("failed to mount ramfs at /bin");
     }
 
     // Mount another ramfs as procfs
@@ -276,7 +279,7 @@ pub(crate) fn remove_file(dir: Option<&VfsNodeRef>, path: &str) -> AxResult {
     let attr = node.get_attr()?;
     if attr.is_dir() {
         ax_err!(IsADirectory)
-    } else if !perm_to_cap(attr.perm(), current_uid()?, current_gid()?).contains(Cap::WRITE) {
+    } else if !perm_to_cap(attr.perm(), attr.user_id(), attr.group_id()).contains(Cap::WRITE) {
         ax_err!(PermissionDenied)
     } else {
         parent_node_of(dir, path).remove(path)
@@ -305,7 +308,7 @@ pub(crate) fn remove_dir(dir: Option<&VfsNodeRef>, path: &str) -> AxResult {
     let attr = node.get_attr()?;
     if !attr.is_dir() {
         ax_err!(NotADirectory)
-    } else if !perm_to_cap(attr.perm(), current_uid()?, current_gid()?).contains(Cap::WRITE) {
+    } else if !perm_to_cap(attr.perm(), attr.user_id(), attr.group_id()).contains(Cap::WRITE) {
         ax_err!(PermissionDenied)
     } else {
         parent_node_of(dir, path).remove(path)
@@ -331,7 +334,7 @@ pub(crate) fn set_current_dir(path: &str) -> AxResult {
     let attr = node.get_attr()?;
     if !attr.is_dir() {
         ax_err!(NotADirectory)
-    } else if !perm_to_cap(attr.perm(), current_uid()?, current_gid()?).contains(Cap::EXECUTE) {
+    } else if !perm_to_cap(attr.perm(), attr.user_id(), attr.group_id()).contains(Cap::EXECUTE) {
         ax_err!(PermissionDenied)
     } else {
         *CURRENT_DIR.lock() = node;
