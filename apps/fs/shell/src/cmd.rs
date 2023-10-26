@@ -195,7 +195,7 @@ fn do_echo(args: &str) {
 
     if let Some(mut pos) = args.rfind('>') {
         let mut append = false;
-        if args.as_bytes()[pos - 1] == b'>' {
+        if pos != 0 && args.as_bytes()[pos - 1] == b'>' {
             pos -= 1;
             append = true;
         }
@@ -323,50 +323,6 @@ fn do_exit(args: &str) {
     });
 }
 
-pub fn run_cmd(line: &[u8]) {
-    fn execute_file(fname: &str, _args: &str) -> io::Result<()> {
-        let mut file = File::execute(fname)?;
-        let mut content: String = String::new();
-        file.read_to_string(&mut content)?;
-        let commands: Vec<&str> = content.split('\n').collect();
-        for command in commands {
-            run_cmd(command.as_bytes());
-        }
-        Ok(())
-    }
-
-    let line = unsafe { core::str::from_utf8_unchecked(line) };
-    let commands: Vec<&str> = line.split(';').collect();
-    for line_str in commands {
-        let (cmd, args) = split_whitespace(line_str);
-        if !cmd.is_empty() {
-            if cmd.contains('/') {
-                if let Err(e) = execute_file(cmd, args) {
-                    println!("{}: {}", cmd, e);
-                }
-                continue;
-            }
-            let mut inner_cmd = false;
-            for (name, func) in CMD_TABLE {
-                if cmd == *name {
-                    func(args);
-                    inner_cmd = true;
-                    break;
-                }
-            }
-            if !inner_cmd {
-                println!("{}: command not found", cmd);
-            }
-        }
-    }
-}
-
-fn split_whitespace(str: &str) -> (&str, &str) {
-    let str = str.trim();
-    str.find(char::is_whitespace)
-        .map_or((str, ""), |n| (&str[..n], str[n + 1..].trim()))
-}
-
 fn do_chmod(args: &str) {
     let mut recursive = false;
     let mut mf = Vec::new();
@@ -463,7 +419,7 @@ fn do_su(args: &str) {
         let mut uid: u32 = u32::MAX;
         for i in 0..3 {
             if args == user_name(i) {
-                uid = i as u32;
+                uid = i;
             }
         }
         if uid == u32::MAX {
@@ -483,4 +439,58 @@ fn do_if_test_exist(args: &str) {
     if File::check(fname).is_ok() {
         run_cmd(cmd.as_bytes());
     }
+}
+
+pub fn run_cmd(line: &[u8]) {
+    fn execute_file(fname: &str, _args: &str) -> io::Result<()> {
+        let mut file = File::execute(fname)?;
+        let mut content: String = String::new();
+        file.read_to_string(&mut content)?;
+        let commands: Vec<&str> = content.split('\n').collect();
+        for command in commands {
+            run_cmd(command.as_bytes());
+        }
+        Ok(())
+    }
+
+    let line = unsafe { core::str::from_utf8_unchecked(line) };
+    let line = line.trim();
+    if line.is_empty() || line.as_bytes()[0] == b'#' {
+        return;
+    }
+    let commands: Vec<&str> = line.split(';').collect();
+    for line_str in commands {
+        let (cmd, args) = split_whitespace(line_str);
+        if !cmd.is_empty() {
+            if cmd.contains('/') {
+                if let Err(e) = execute_file(cmd, args) {
+                    println!("{}: {}", cmd, e);
+                }
+                continue;
+            }
+            let mut inner_cmd = false;
+            for (name, func) in CMD_TABLE {
+                if cmd == *name {
+                    func(args);
+                    inner_cmd = true;
+                    break;
+                }
+            }
+            if !inner_cmd {
+                if File::check(("/bin/".to_string() + cmd).as_str()).is_ok() {
+                    if let Err(e) = execute_file(("/bin/".to_string() + cmd).as_str(), args) {
+                        println!("{}: {}", cmd, e);
+                    }
+                } else {
+                    println!("{}: command not found", cmd);
+                }
+            }
+        }
+    }
+}
+
+fn split_whitespace(str: &str) -> (&str, &str) {
+    let str = str.trim();
+    str.find(char::is_whitespace)
+        .map_or((str, ""), |n| (&str[..n], str[n + 1..].trim()))
 }

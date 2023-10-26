@@ -3,7 +3,6 @@
 /.idea
 .DS_Store
 *.asm
-*.img
 actual.out
 qemu.log
 rusty-tags.vi

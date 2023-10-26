@@ -170,9 +170,20 @@ pub(crate) fn init_rootfs(disk: crate::dev::Disk) {
         .expect("failed to mount devfs at /dev");
 
     #[cfg(feature = "ramfs")]
-    root_dir
-        .mount("/home", mounts::ramfs())
-        .expect("failed to mount ramfs at /home");
+    {
+        root_dir
+            .mount("/home", mounts::ramfs())
+            .expect("failed to mount ramfs at /home");
+        root_dir
+            .mount("/tmp", mounts::ramfs())
+            .expect("failed to mount ramfs at /tmp");
+        root_dir
+            .mount("/etc", mounts::ramfs())
+            .expect("failed to mount ramfs at /etc");
+        root_dir
+            .mount("/root", mounts::ramfs())
+            .expect("failed to mount ramfs at /root");
+    }
 
     // Mount another ramfs as procfs
     #[cfg(feature = "procfs")]
