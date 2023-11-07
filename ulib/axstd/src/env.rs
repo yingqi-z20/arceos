@@ -29,3 +29,9 @@ pub fn current_uid() -> io::Result<u32> {
 pub fn set_current_uid(uid: u32) -> io::Result<()> {
     arceos_api::fs::ax_setuid(uid)
 }
+
+/// Changes the current user id to 0 if the current user is a sudoer.
+#[cfg(feature = "fs")]
+pub fn sudo() -> io::Result<()> {
+    arceos_api::fs::sudo()
+}

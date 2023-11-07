@@ -49,6 +49,7 @@ const CMD_TABLE: &[(&str, CmdHandler)] = &[
     ("chown", do_chown),
     ("whoami", do_whoami),
     ("su", do_su),
+    ("sudo", do_sudo),
     ("if_test_exist", do_if_test_exist),
 ];
 
@@ -437,33 +438,54 @@ fn do_su(args: &str) {
 fn do_if_test_exist(args: &str) {
     let (fname, cmd) = split_whitespace(args);
     if File::check(fname).is_ok() {
-        run_cmd(cmd.as_bytes());
+        run_cmd(cmd.as_bytes(), "");
     }
 }
 
-pub fn run_cmd(line: &[u8]) {
-    fn execute_file(fname: &str, _args: &str) -> io::Result<()> {
+fn do_sudo(args: &str) {
+    let i = std::env::current_uid().unwrap();
+    if let Err(e) = std::env::sudo() {
+        print_err!("sudo", args, e);
+        return;
+    }
+    run_cmd(args.as_bytes(), "");
+    if let Err(e) = std::env::set_current_uid(i) {
+        print_err!("sudo", args, e);
+    }
+}
+
+pub fn run_cmd(line: &[u8], args: &str) {
+    fn execute_file(fname: &str, args: &str) -> io::Result<()> {
         let mut file = File::execute(fname)?;
         let mut content: String = String::new();
         file.read_to_string(&mut content)?;
         let commands: Vec<&str> = content.split('\n').collect();
         for command in commands {
-            run_cmd(command.as_bytes());
+            run_cmd(command.as_bytes(), args);
         }
         Ok(())
     }
 
     let line = unsafe { core::str::from_utf8_unchecked(line) };
-    let line = line.trim();
+    let mut line = line.trim().to_string();
     if line.is_empty() || line.as_bytes()[0] == b'#' {
         return;
+    }
+    let argv: Vec<&str> = args.split(' ').map(|s| s.trim()).collect();
+    let mut i = 0;
+    for arg in argv {
+        if arg.is_empty() {
+            continue;
+        }
+        line = line.replace(("$".to_string() + i.to_string().as_str()).as_str(), arg);
+        i += 1;
     }
     let commands: Vec<&str> = line.split(';').collect();
     for line_str in commands {
         let (cmd, args) = split_whitespace(line_str);
         if !cmd.is_empty() {
             if cmd.contains('/') {
-                if let Err(e) = execute_file(cmd, args) {
+                if let Err(e) = execute_file(cmd, line_str) {
                     println!("{}: {}", cmd, e);
                 }
                 continue;

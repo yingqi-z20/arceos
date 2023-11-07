@@ -228,6 +228,8 @@ pub mod fs {
         pub fn ax_getuid() -> AxResult<u32>;
         /// Changes the current user id to the specified id.
         pub fn ax_setuid(uid: u32) -> AxResult;
+        /// Changes the current user id to 0 if the current user is a sudoer.
+        pub fn sudo() -> AxResult;
     }
 }
 

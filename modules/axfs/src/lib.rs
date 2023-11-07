@@ -34,6 +34,7 @@ mod root;
 pub mod api;
 pub mod fops;
 mod user;
+mod sha1;
 
 use axdriver::{prelude::*, AxDeviceContainer};
 

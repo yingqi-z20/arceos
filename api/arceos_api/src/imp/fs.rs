@@ -1,8 +1,8 @@
 use alloc::string::String;
 use axerrno::AxError::PermissionDenied;
-use axerrno::{AxError, AxResult};
+use axerrno::{ax_err, AxError, AxResult};
 use axfs::api::current_uid;
-use axfs::fops::{Directory, File, FileAttr};
+use axfs::fops::{Directory, File, FileAttr, OpenOptions};
 
 pub use axfs::fops::DirEntry as AxDirEntry;
 pub use axfs::fops::FileAttr as AxFileAttr;
@@ -105,8 +105,9 @@ pub fn ax_set_current_dir(path: &str) -> AxResult {
 }
 
 pub fn ax_getuid() -> AxResult<u32> {
-    axfs::api::current_uid()
+    current_uid()
 }
+
 pub fn ax_setuid(uid: u32) -> AxResult {
     if current_uid().is_ok_and(|uid| (uid == 0)) {
         return axfs::api::set_current_uid(uid);
@@ -121,32 +122,82 @@ pub fn ax_setuid(uid: u32) -> AxResult {
     axhal::console::putchar(b'd');
     axhal::console::putchar(b':');
     axhal::console::putchar(b' ');
-    let mut password = [0u8; 256];
-    let mut i: usize = 0;
+    let password = get_password();
+    if uid == 0 && password != "123456" {
+        return Err(AxError::AuthenticationFailure);
+    }
+    if uid == 1 && password != "admin" {
+        return Err(AxError::AuthenticationFailure);
+    }
+    if uid == 2 && password != "guest" {
+        return Err(AxError::AuthenticationFailure);
+    }
+    axfs::api::set_current_uid(uid)
+}
+
+pub fn sudo() -> AxResult {
+    let uid = current_uid()?;
+    if uid == 0 {
+        return Ok(());
+    }
+    axhal::console::putchar(b'[');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b'u');
+    axhal::console::putchar(b'd');
+    axhal::console::putchar(b'o');
+    axhal::console::putchar(b']');
+    axhal::console::putchar(b' ');
+    axhal::console::putchar(b'p');
+    axhal::console::putchar(b'a');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b'w');
+    axhal::console::putchar(b'o');
+    axhal::console::putchar(b'r');
+    axhal::console::putchar(b'd');
+    axhal::console::putchar(b' ');
+    axhal::console::putchar(b'f');
+    axhal::console::putchar(b'o');
+    axhal::console::putchar(b'r');
+    axhal::console::putchar(b' ');
+
+    axhal::console::putchar(b'a');
+    axhal::console::putchar(b'd');
+    axhal::console::putchar(b'm');
+    axhal::console::putchar(b'i');
+    axhal::console::putchar(b'n');
+
+    axhal::console::putchar(b' ');
+    axhal::console::putchar(b':');
+    axhal::console::putchar(b' ');
+    let password = get_password();
+    if uid == 1 {
+        if password != "admin" {
+            return Err(AxError::AuthenticationFailure);
+        } else {
+            axfs::api::set_current_uid(0)
+        }
+    } else {
+        Err(PermissionDenied)
+    }
+}
+
+fn get_password() -> String {
+    let mut password = String::new();
     const DL: u8 = b'\x7f';
     const BS: u8 = b'\x08';
-    while i < 256 {
+    loop {
         if let Some(c) = axhal::console::getchar().map(|c| if c == b'\r' { b'\n' } else { c }) {
             if c == b'\n' {
                 break;
             }
             if c == DL || c == BS {
-                i = i.saturating_sub(1);
+                password.pop();
                 continue;
             }
-            password[i] = c;
-            i += 1;
+            password.push(c as char);
         }
     }
     axhal::console::putchar(b'\n');
-    if uid == 0 && (i != 6 || password[..6] != [b'1', b'2', b'3', b'4', b'5', b'6']) {
-        return Err(AxError::AuthenticationFailure);
-    }
-    if uid == 1 && (i != 5 || password[..5] != [b'a', b'd', b'm', b'i', b'n']) {
-        return Err(AxError::AuthenticationFailure);
-    }
-    if uid == 2 && (i != 5 || password[..5] != [b'g', b'u', b'e', b's', b't']) {
-        return Err(AxError::AuthenticationFailure);
-    }
-    axfs::api::set_current_uid(uid)
+    password
 }

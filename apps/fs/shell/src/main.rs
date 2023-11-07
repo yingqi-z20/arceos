@@ -53,7 +53,7 @@ fn main() {
 
     let mut buf = [0; MAX_CMD_LEN];
     let mut cursor = 0;
-    cmd::run_cmd("help".as_bytes());
+    cmd::run_cmd("help".as_bytes(), "");
     print_prompt();
 
     loop {
@@ -67,7 +67,7 @@ fn main() {
             CR | LF => {
                 println!();
                 if cursor > 0 {
-                    cmd::run_cmd(&buf[..cursor]);
+                    cmd::run_cmd(&buf[..cursor], "");
                     cursor = 0;
                 }
                 print_prompt();

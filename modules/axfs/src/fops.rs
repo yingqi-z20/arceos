@@ -396,8 +396,9 @@ impl From<&OpenOptions> for Cap {
     }
 }
 
-pub fn perm_to_cap(perm: FilePerm, uid: u32, _gid: u32) -> Cap {
+pub fn perm_to_cap(perm: FilePerm, uid: u32, gid: u32) -> Cap {
     let current_uid = current_uid().unwrap();
+    let current_gid = current_gid().unwrap();
     let mut cap = Cap::empty();
     if current_uid == 0 {
         cap |= Cap::READ;
@@ -405,7 +406,7 @@ pub fn perm_to_cap(perm: FilePerm, uid: u32, _gid: u32) -> Cap {
         cap |= Cap::EXECUTE;
         return cap;
     }
-    if current_uid == uid {
+    if current_uid == uid && current_gid == gid {
         if perm.owner_readable() {
             cap |= Cap::READ;
         }
