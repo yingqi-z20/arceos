@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 // https://github.com/shadowsocks/crypto2/blob/master/src/hash/sha1.rs
 
 // FIPS-180-1 compliant SHA-1 implementation
