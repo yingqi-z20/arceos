@@ -458,6 +458,64 @@ fn do_sudo(args: &str) {
 }
 
 fn adduser(args: &str) {
+    fn del_file(username: &str) -> io::Result<()> {
+        let mut content: String = String::new();
+        let mut file = File::open("/etc/passwd")?;
+        file.read_to_string(&mut content)?;
+        content = content.trim().to_string();
+        let last_record: Vec<&str> = content
+            .split('\n')
+            .last()
+            .unwrap_or_default()
+            .split(":")
+            .collect();
+        if last_record.len() != 7 {
+            return Err(Error::InvalidData);
+        }
+        let mut file = File::create("/etc/passwd")?;
+        file.write_all(content.as_bytes())?;
+        let text_list = [
+            "\n",
+            username,
+            ":x:",
+            &(last_record[2].parse::<u32>().unwrap_or(0) + 1).to_string(),
+            ":",
+            &(last_record[3].parse::<u32>().unwrap_or(0) + 1).to_string(),
+            ":,,,:/home/",
+            username,
+            ":/bin/sh\n",
+        ];
+        for text in text_list {
+            file.write_all(text.as_bytes())?;
+        }
+        let home_path = "/home/".to_string() + username;
+        do_mkdir(home_path.clone().as_str());
+        do_chmod(("777 ".to_string() + home_path.clone().as_str()).as_str());
+        do_chown((username.to_string() + " " + home_path.clone().as_str()).as_str());
+        do_chmod(("700 ".to_string() + home_path.clone().as_str()).as_str());
+        Ok(())
+    }
+
+    if !args.contains(char::is_whitespace) {
+        let mut uid: u32 = u32::MAX;
+        for i in 0..3 {
+            if args == user_name(i) {
+                uid = i;
+            }
+        }
+        if uid != u32::MAX {
+            print_err!("adduser", "existing user");
+            return;
+        }
+        if let Err(e) = del_file(args) {
+            print_err!("adduser", e);
+        }
+    } else {
+        print_err!("deluser", "too many arguments");
+    }
+}
+
+fn deluser(args: &str) {
     fn add_file(username: &str) -> io::Result<()> {
         let mut content: String = String::new();
         let mut file = File::open("/etc/passwd")?;
