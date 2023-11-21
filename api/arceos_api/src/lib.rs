@@ -230,6 +230,8 @@ pub mod fs {
         pub fn ax_setuid(uid: u32) -> AxResult;
         /// Changes the current user id to 0 if the current user is a sudoer.
         pub fn sudo() -> AxResult;
+        /// Changes the current user password.
+        pub fn ax_setpassword() -> AxResult;
     }
 }
 

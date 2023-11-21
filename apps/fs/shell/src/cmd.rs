@@ -1,6 +1,5 @@
-use alloc::borrow::ToOwned;
 use alloc::string::ToString;
-use std::env::set_current_uid;
+use std::env::set_password;
 use std::fs::{self, File, FileType};
 use std::io::{self, prelude::*, Error};
 use std::{string::String, vec::Vec};
@@ -19,22 +18,88 @@ macro_rules! print_err {
 
 type CmdHandler = fn(&str);
 
+fn user_map() -> Vec<(u32, String)> {
+    let mut content = "".to_string();
+    let mut buf = [0; 1024];
+    let mut um: Vec<(u32, String)> = Vec::new();
+    let mut file = File::open("/etc/passwd").unwrap_or(File::open("/dev/null").unwrap());
+    loop {
+        let n = file.read(&mut buf).unwrap_or(0);
+        if n > 0 {
+            content += String::from_utf8_lossy(&(buf[..n])).as_ref();
+        } else {
+            break;
+        }
+    }
+    let lines: Vec<&str> = content.split('\n').collect();
+    for line in lines {
+        if line.is_empty() {
+            continue;
+        }
+        let v: Vec<&str> = line.split(':').collect();
+        let uid = String::from(v[2]).parse::<u32>().unwrap_or(u32::MAX);
+        um.push((uid, v[0].trim().to_string()))
+    }
+    um
+}
+
+fn group_map() -> Vec<(u32, String)> {
+    let mut content = "".to_string();
+    let mut buf = [0; 1024];
+    let mut gm: Vec<(u32, String)> = Vec::new();
+    let mut file = File::open("/etc/group").unwrap_or(File::open("/dev/null").unwrap());
+    loop {
+        let n = file.read(&mut buf).unwrap_or(0);
+        if n > 0 {
+            content += String::from_utf8_lossy(&(buf[..n])).as_ref();
+        } else {
+            break;
+        }
+    }
+    let lines: Vec<&str> = content.split('\n').collect();
+    for line in lines {
+        if line.is_empty() {
+            continue;
+        }
+        let v: Vec<&str> = line.split(':').collect();
+        let gid = String::from(v[2]).parse::<u32>().unwrap_or(u32::MAX);
+        gm.push((gid, v[0].to_string()))
+    }
+    gm
+}
+
 pub fn user_name(uid: u32) -> String {
-    const USER_MAP: [&str; 3] = ["root", "admin", "guest"];
-    let uid_string = uid.to_string();
-    let uid_str = uid_string.as_str();
-    let user = USER_MAP.get(uid as usize).unwrap_or(&uid_str);
-    user.to_string()
+    for u in user_map() {
+        if u.0 == uid {
+            return u.1;
+        }
+    }
+    return "root".to_string();
 }
-
 pub fn group_name(gid: u32) -> String {
-    const GROUP_MAP: [&str; 3] = ["root", "admin", "guest"];
-    let gid_string = gid.to_string();
-    let gid_str = gid_string.as_str();
-    let group = GROUP_MAP.get(gid as usize).unwrap_or(&gid_str);
-    group.to_string()
+    for g in group_map() {
+        if g.0 == gid {
+            return g.1;
+        }
+    }
+    return "root".to_string();
 }
-
+pub fn user_id(name: String) -> u32 {
+    for u in user_map() {
+        if u.1 == name {
+            return u.0;
+        }
+    }
+    return 0;
+}
+pub fn group_id(name: String) -> u32 {
+    for g in group_map() {
+        if g.1 == name {
+            return g.0;
+        }
+    }
+    return 0;
+}
 const CMD_TABLE: &[(&str, CmdHandler)] = &[
     ("cat", do_cat),
     ("cd", do_cd),
@@ -54,6 +119,8 @@ const CMD_TABLE: &[(&str, CmdHandler)] = &[
     ("sudo", do_sudo),
     ("if_test_exist", do_if_test_exist),
     ("adduser", adduser),
+    ("deluser", deluser),
+    ("passwd", passwd),
 ];
 
 fn file_type_to_char(ty: FileType) -> char {
@@ -381,23 +448,13 @@ fn do_chown(args: &str) {
     let (u, g) = ug
         .find(':')
         .map_or((ug, ""), |n| (&ug[..n], ug[n + 1..].trim()));
-    let mut uid: u32 = u32::MAX;
-    let mut gid: u32 = u32::MAX;
-    for i in 0..3 {
-        if u == user_name(i) {
-            uid = i;
-        }
-    }
-    for i in 0..3 {
-        if g == group_name(i) {
-            gid = i;
-        }
-    }
-    if uid == u32::MAX {
+    let uid = user_id(u.to_string());
+    let gid = group_id(g.to_string());
+    if uid == 0 && u != "root" {
         print_err!("chown", "invalid user");
         return;
     }
-    if gid == u32::MAX {
+    if gid == 0 && g != "root" {
         print_err!("chown", "invalid group");
         return;
     }
@@ -420,13 +477,8 @@ fn do_whoami(_args: &str) {
 
 fn do_su(args: &str) {
     if !args.contains(char::is_whitespace) {
-        let mut uid: u32 = u32::MAX;
-        for i in 0..3 {
-            if args == user_name(i) {
-                uid = i;
-            }
-        }
-        if uid == u32::MAX {
+        let uid: u32 = user_id(args.to_string());
+        if uid == 0 && args != "root" {
             print_err!("su", "invalid user");
             return;
         }
@@ -458,64 +510,6 @@ fn do_sudo(args: &str) {
 }
 
 fn adduser(args: &str) {
-    fn del_file(username: &str) -> io::Result<()> {
-        let mut content: String = String::new();
-        let mut file = File::open("/etc/passwd")?;
-        file.read_to_string(&mut content)?;
-        content = content.trim().to_string();
-        let last_record: Vec<&str> = content
-            .split('\n')
-            .last()
-            .unwrap_or_default()
-            .split(":")
-            .collect();
-        if last_record.len() != 7 {
-            return Err(Error::InvalidData);
-        }
-        let mut file = File::create("/etc/passwd")?;
-        file.write_all(content.as_bytes())?;
-        let text_list = [
-            "\n",
-            username,
-            ":x:",
-            &(last_record[2].parse::<u32>().unwrap_or(0) + 1).to_string(),
-            ":",
-            &(last_record[3].parse::<u32>().unwrap_or(0) + 1).to_string(),
-            ":,,,:/home/",
-            username,
-            ":/bin/sh\n",
-        ];
-        for text in text_list {
-            file.write_all(text.as_bytes())?;
-        }
-        let home_path = "/home/".to_string() + username;
-        do_mkdir(home_path.clone().as_str());
-        do_chmod(("777 ".to_string() + home_path.clone().as_str()).as_str());
-        do_chown((username.to_string() + " " + home_path.clone().as_str()).as_str());
-        do_chmod(("700 ".to_string() + home_path.clone().as_str()).as_str());
-        Ok(())
-    }
-
-    if !args.contains(char::is_whitespace) {
-        let mut uid: u32 = u32::MAX;
-        for i in 0..3 {
-            if args == user_name(i) {
-                uid = i;
-            }
-        }
-        if uid != u32::MAX {
-            print_err!("adduser", "existing user");
-            return;
-        }
-        if let Err(e) = del_file(args) {
-            print_err!("adduser", e);
-        }
-    } else {
-        print_err!("deluser", "too many arguments");
-    }
-}
-
-fn deluser(args: &str) {
     fn add_file(username: &str) -> io::Result<()> {
         let mut content: String = String::new();
         let mut file = File::open("/etc/passwd")?;
@@ -546,10 +540,37 @@ fn deluser(args: &str) {
         for text in text_list {
             file.write_all(text.as_bytes())?;
         }
+        content = String::new();
+        let mut file = File::open("/etc/group")?;
+        file.read_to_string(&mut content)?;
+        content = content.trim().to_string();
+        let last_record: Vec<&str> = content
+            .split('\n')
+            .last()
+            .unwrap_or_default()
+            .split(":")
+            .collect();
+        if last_record.len() <= 2 {
+            return Err(Error::InvalidData);
+        }
+        let mut file = File::create("/etc/group")?;
+        file.write_all(content.as_bytes())?;
+        let text_list = [
+            "\n",
+            username,
+            ":x:",
+            &(last_record[2].parse::<u32>().unwrap_or(0) + 1).to_string(),
+            ":\n",
+        ];
+        for text in text_list {
+            file.write_all(text.as_bytes())?;
+        }
         let home_path = "/home/".to_string() + username;
         do_mkdir(home_path.clone().as_str());
         do_chmod(("777 ".to_string() + home_path.clone().as_str()).as_str());
-        do_chown((username.to_string() + " " + home_path.clone().as_str()).as_str());
+        do_chown(
+            (username.to_string() + ":" + username + " " + home_path.clone().as_str()).as_str(),
+        );
         do_chmod(("700 ".to_string() + home_path.clone().as_str()).as_str());
         Ok(())
     }
@@ -569,7 +590,50 @@ fn deluser(args: &str) {
             print_err!("adduser", e);
         }
     } else {
-        print_err!("adduser", "too many arguments");
+        print_err!("deluser", "too many arguments");
+    }
+}
+
+fn deluser(args: &str) {
+    fn del_file(username: &str) -> io::Result<()> {
+        let mut content: String = String::new();
+        let mut file = File::open("/etc/passwd")?;
+        file.read_to_string(&mut content)?;
+        content = content.trim().to_string();
+        let lines: Vec<&str> = content.split('\n').collect();
+        let mut new_content = String::new();
+        let mut del = false;
+        for line in lines {
+            if line.is_empty() {
+                continue;
+            }
+            let v: Vec<&str> = line.split(':').collect();
+            if v[0] == username.to_string() {
+                del = true;
+                continue;
+            }
+            new_content += (line.to_string() + "\n").as_str();
+        }
+        let mut file = File::create("/etc/passwd")?;
+        file.write_all(new_content.as_bytes())?;
+        if !del {
+            println!("deluser: user not exist");
+        }
+        Ok(())
+    }
+
+    if !args.contains(char::is_whitespace) {
+        if let Err(e) = del_file(args) {
+            print_err!("deluser", e);
+        }
+    } else {
+        print_err!("deluser", "too many arguments");
+    }
+}
+
+fn passwd(_args: &str) {
+    if let Err(e) = set_password() {
+        print_err!("passwd", e);
     }
 }
 

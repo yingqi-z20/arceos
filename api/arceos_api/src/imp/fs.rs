@@ -1,7 +1,7 @@
 use alloc::string::String;
 use axerrno::AxError::PermissionDenied;
 use axerrno::{ax_err, AxError, AxResult};
-use axfs::api::current_uid;
+use axfs::api::{current_uid, user_name};
 use axfs::fops::{Directory, File, FileAttr, OpenOptions};
 
 pub use axfs::fops::DirEntry as AxDirEntry;
@@ -123,13 +123,7 @@ pub fn ax_setuid(uid: u32) -> AxResult {
     axhal::console::putchar(b':');
     axhal::console::putchar(b' ');
     let password = get_password();
-    if uid == 0 && password != "123456" {
-        return Err(AxError::AuthenticationFailure);
-    }
-    if uid == 1 && password != "admin" {
-        return Err(AxError::AuthenticationFailure);
-    }
-    if uid == 2 && password != "guest" {
+    if !axfs::api::verify(uid, password) {
         return Err(AxError::AuthenticationFailure);
     }
     axfs::api::set_current_uid(uid)
@@ -140,6 +134,7 @@ pub fn sudo() -> AxResult {
     if uid == 0 {
         return Ok(());
     }
+    let name = user_name(uid);
     axhal::console::putchar(b'[');
     axhal::console::putchar(b's');
     axhal::console::putchar(b'u');
@@ -161,18 +156,16 @@ pub fn sudo() -> AxResult {
     axhal::console::putchar(b'r');
     axhal::console::putchar(b' ');
 
-    axhal::console::putchar(b'a');
-    axhal::console::putchar(b'd');
-    axhal::console::putchar(b'm');
-    axhal::console::putchar(b'i');
-    axhal::console::putchar(b'n');
+    for c in name.as_str().as_bytes() {
+        axhal::console::putchar(*c);
+    }
 
     axhal::console::putchar(b' ');
     axhal::console::putchar(b':');
     axhal::console::putchar(b' ');
     let password = get_password();
-    if uid == 1 {
-        if password != "admin" {
+    if axfs::api::is_sudoer(name) {
+        if !axfs::api::verify(uid, password) {
             return Err(AxError::AuthenticationFailure);
         } else {
             axfs::api::set_current_uid(0)
@@ -180,6 +173,106 @@ pub fn sudo() -> AxResult {
     } else {
         Err(PermissionDenied)
     }
+}
+
+pub fn ax_setpassword() -> AxResult {
+    let name = user_name(current_uid().unwrap_or(0));
+    axhal::console::putchar(b'C');
+    axhal::console::putchar(b'h');
+    axhal::console::putchar(b'a');
+    axhal::console::putchar(b'n');
+    axhal::console::putchar(b'g');
+    axhal::console::putchar(b'i');
+    axhal::console::putchar(b'n');
+    axhal::console::putchar(b'g');
+    axhal::console::putchar(b' ');
+    axhal::console::putchar(b'p');
+    axhal::console::putchar(b'a');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b'w');
+    axhal::console::putchar(b'o');
+    axhal::console::putchar(b'r');
+    axhal::console::putchar(b'd');
+    axhal::console::putchar(b' ');
+    axhal::console::putchar(b'f');
+    axhal::console::putchar(b'o');
+    axhal::console::putchar(b'r');
+    axhal::console::putchar(b' ');
+
+    for c in name.as_str().as_bytes() {
+        axhal::console::putchar(*c);
+    }
+
+    axhal::console::putchar(b'.');
+    axhal::console::putchar(b'\n');
+    axhal::console::putchar(b'C');
+    axhal::console::putchar(b'u');
+    axhal::console::putchar(b'r');
+    axhal::console::putchar(b'r');
+    axhal::console::putchar(b'e');
+    axhal::console::putchar(b'n');
+    axhal::console::putchar(b't');
+    axhal::console::putchar(b' ');
+    axhal::console::putchar(b'p');
+    axhal::console::putchar(b'a');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b'w');
+    axhal::console::putchar(b'o');
+    axhal::console::putchar(b'r');
+    axhal::console::putchar(b'd');
+    axhal::console::putchar(b':');
+    axhal::console::putchar(b' ');
+    let password = get_password();
+    if !axfs::api::verify(current_uid().unwrap_or(0), password) {
+        return Err(AxError::AuthenticationFailure);
+    }
+    axhal::console::putchar(b'N');
+    axhal::console::putchar(b'e');
+    axhal::console::putchar(b'w');
+    axhal::console::putchar(b' ');
+    axhal::console::putchar(b'p');
+    axhal::console::putchar(b'a');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b'w');
+    axhal::console::putchar(b'o');
+    axhal::console::putchar(b'r');
+    axhal::console::putchar(b'd');
+    axhal::console::putchar(b':');
+    axhal::console::putchar(b' ');
+    let password1 = get_password();
+    axhal::console::putchar(b'R');
+    axhal::console::putchar(b'e');
+    axhal::console::putchar(b't');
+    axhal::console::putchar(b'y');
+    axhal::console::putchar(b'p');
+    axhal::console::putchar(b'e');
+    axhal::console::putchar(b' ');
+    axhal::console::putchar(b'n');
+    axhal::console::putchar(b'e');
+    axhal::console::putchar(b'w');
+    axhal::console::putchar(b' ');
+    axhal::console::putchar(b'p');
+    axhal::console::putchar(b'a');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b's');
+    axhal::console::putchar(b'w');
+    axhal::console::putchar(b'o');
+    axhal::console::putchar(b'r');
+    axhal::console::putchar(b'd');
+    axhal::console::putchar(b':');
+    axhal::console::putchar(b' ');
+    let password2 = get_password();
+    if password1 == password2 {
+        return axfs::api::set_password(password1);
+    }
+    let pnm = "Sorry, passwords do not match.\n";
+    for c in pnm.as_bytes() {
+        axhal::console::putchar(*c);
+    }
+    Err(AxError::AuthenticationFailure)
 }
 
 fn get_password() -> String {

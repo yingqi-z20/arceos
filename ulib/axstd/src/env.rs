@@ -35,3 +35,9 @@ pub fn set_current_uid(uid: u32) -> io::Result<()> {
 pub fn sudo() -> io::Result<()> {
     arceos_api::fs::sudo()
 }
+
+/// Changes the current user password.
+#[cfg(feature = "fs")]
+pub fn set_password() -> io::Result<()> {
+    arceos_api::fs::ax_setpassword()
+}

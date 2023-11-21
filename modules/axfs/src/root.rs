@@ -181,9 +181,6 @@ pub(crate) fn init_rootfs(disk: crate::dev::Disk) {
             .mount("/etc", mounts::ramfs())
             .expect("failed to mount ramfs at /etc");
         root_dir
-            .mount("/root", mounts::ramfs())
-            .expect("failed to mount ramfs at /root");
-        root_dir
             .mount("/bin", mounts::ramfs())
             .expect("failed to mount ramfs at /bin");
     }

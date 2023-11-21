@@ -21,6 +21,7 @@
 
 #[macro_use]
 extern crate axlog;
+extern crate alloc;
 
 #[cfg(all(target_os = "none", not(test)))]
 mod lang_items;
@@ -31,6 +32,7 @@ mod mp;
 
 #[cfg(feature = "smp")]
 pub use self::mp::rust_main_secondary;
+use alloc::string::String;
 
 const LOGO: &str = r#"
        d8888                            .d88888b.   .d8888b.
@@ -214,7 +216,49 @@ pub fn restart(exit_code: i32) {
     info!("main task exited: exit_code={}", exit_code as i8);
     #[cfg(feature = "fs")]
     {
-        axfs::api::set_current_uid(2).unwrap();
+        axfs::api::set_current_uid(0).unwrap();
+        let mn = "arceos login: ";
+        let p = "Password: ";
+        let f = "Login incorrect\n";
+        fn get_password() -> String {
+            let mut password = String::new();
+            const DL: u8 = b'\x7f';
+            const BS: u8 = b'\x08';
+            loop {
+                if let Some(c) =
+                    axhal::console::getchar().map(|c| if c == b'\r' { b'\n' } else { c })
+                {
+                    if c == b'\n' {
+                        break;
+                    }
+                    if c == DL || c == BS {
+                        password.pop();
+                        continue;
+                    }
+                    password.push(c as char);
+                }
+            }
+            axhal::console::putchar(b'\n');
+            password
+        }
+        loop {
+            for c in mn.as_bytes() {
+                axhal::console::putchar(*c);
+            }
+            let name = get_password();
+            for c in p.as_bytes() {
+                axhal::console::putchar(*c);
+            }
+            let password = get_password();
+            let uid = axfs::api::user_id(name);
+            if axfs::api::verify(uid, password) {
+                axfs::api::set_current_uid(uid).expect("set_current_uid failed");
+                break;
+            }
+            for c in f.as_bytes() {
+                axhal::console::putchar(*c);
+            }
+        }
     }
     unsafe { main() };
 }
