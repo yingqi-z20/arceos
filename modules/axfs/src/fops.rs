@@ -397,9 +397,16 @@ impl From<&OpenOptions> for Cap {
 }
 
 pub fn perm_to_cap(perm: FilePerm, uid: u32, gid: u32) -> Cap {
+    let mut cap = Cap::empty();
+    #[cfg(not(feature = "user"))]
+    {
+        cap |= Cap::READ;
+        cap |= Cap::WRITE;
+        cap |= Cap::EXECUTE;
+        return cap;
+    }
     let current_uid = current_uid().unwrap();
     let current_gid = current_gid().unwrap();
-    let mut cap = Cap::empty();
     if current_uid == 0 {
         cap |= Cap::READ;
         cap |= Cap::WRITE;

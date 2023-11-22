@@ -9,10 +9,18 @@ use axsync::Mutex;
 static UID: Mutex<u32> = Mutex::new(0);
 
 pub(crate) fn current_uid() -> AxResult<u32> {
+    #[cfg(not(feature = "user"))]
+    {
+        Ok(0)
+    }
     Ok(*UID.lock())
 }
 
 pub(crate) fn current_gid() -> AxResult<u32> {
+    #[cfg(not(feature = "user"))]
+    {
+        Ok(0)
+    }
     current_uid()
 }
 
@@ -142,6 +150,10 @@ pub(crate) fn is_sudoer(name: String) -> bool {
 }
 
 pub(crate) fn verify(uid: u32, password: String) -> bool {
+    #[cfg(not(feature = "user"))]
+    {
+        t
+    }
     let cuid = current_uid().unwrap();
     set_current_uid(0).unwrap();
     let mut opt = OpenOptions::new();
