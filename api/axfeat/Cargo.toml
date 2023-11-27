@@ -37,7 +37,7 @@ sched_cfs = ["axtask/sched_cfs", "irq"]
 
 # File system
 fs = ["alloc", "paging", "axdriver/virtio-blk", "dep:axfs", "axruntime/fs"] # TODO: try to remove "paging"
-user = ["dep:axuser"]
+user = ["dep:axuser", "axfs/permission"]
 myfs = ["axfs?/myfs"]
 
 # Networking

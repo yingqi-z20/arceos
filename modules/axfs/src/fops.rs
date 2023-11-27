@@ -5,6 +5,8 @@ use axfs_vfs::{VfsError, VfsNodeRef};
 use axio::SeekFrom;
 use capability::{Cap, WithCap};
 use core::fmt;
+
+#[cfg(feature = "permission")]
 use permission::permission::fops_cap;
 
 #[cfg(feature = "myfs")]
@@ -166,7 +168,7 @@ impl File {
             SeekFrom::Current(off) => self.offset.checked_add_signed(off),
             SeekFrom::End(off) => size.checked_add_signed(off),
         }
-        .ok_or_else(|| ax_err_type!(InvalidInput))?;
+            .ok_or_else(|| ax_err_type!(InvalidInput))?;
         self.offset = new_offset;
         Ok(new_offset)
     }
@@ -344,5 +346,9 @@ pub fn perm_to_cap(perm: FilePerm, uid: u32, gid: u32) -> Cap {
         cap |= Cap::EXECUTE;
         return cap;
     }
-    fops_cap(perm, uid, gid)
+
+    #[cfg(feature = "permission")]
+    {
+        fops_cap(perm, uid, gid)
+    }
 }

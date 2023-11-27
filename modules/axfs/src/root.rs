@@ -10,8 +10,15 @@ use capability::Cap;
 use lazy_init::LazyInit;
 
 use crate::fops::perm_to_cap;
-use crate::permission::{current_gid, current_uid};
 use crate::{api::FileType, fs, mounts};
+
+#[cfg(feature = "permission")]
+use crate::permission::{current_gid, current_uid};
+
+#[cfg(not(feature = "permission"))]
+const current_uid: fn() -> AxResult<u32> = || { Ok(0) };
+#[cfg(not(feature = "permission"))]
+const current_gid: fn() -> AxResult<u32> = || { Ok(0) };
 
 static CURRENT_DIR_PATH: Mutex<String> = Mutex::new(String::new());
 static CURRENT_DIR: LazyInit<Mutex<VfsNodeRef>> = LazyInit::new();
@@ -74,8 +81,8 @@ impl RootDirectory {
     }
 
     fn lookup_mounted_fs<F, T>(&self, path: &str, f: F) -> AxResult<T>
-    where
-        F: FnOnce(Arc<dyn VfsOps>, &str) -> AxResult<T>,
+        where
+            F: FnOnce(Arc<dyn VfsOps>, &str) -> AxResult<T>,
     {
         debug!("lookup at root: {}", path);
         let path = path.trim_matches('/');

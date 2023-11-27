@@ -16,7 +16,7 @@ irq = ["axfeat/irq"]
 alloc = ["dep:axalloc", "axfeat/alloc"]
 multitask = ["axtask/multitask", "axfeat/multitask"]
 fs = ["dep:axfs", "axfeat/fs"]
-user = ["dep:axuser"]
+user = ["dep:axuser", "axfs/permission"]
 net = ["dep:axnet", "axfeat/net"]
 display = ["dep:axdisplay", "axfeat/display"]
 

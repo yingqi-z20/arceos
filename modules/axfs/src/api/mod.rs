@@ -88,12 +88,22 @@ pub fn rename(old: &str, new: &str) -> io::Result<()> {
     crate::root::rename(old, new)
 }
 
+#[allow(unreachable_code)]
 /// Returns the current user id as a [`u32`].
 pub fn current_uid() -> io::Result<u32> {
-    crate::permission::current_uid()
+    #[cfg(feature = "permission")]
+    {
+        return crate::permission::current_uid();
+    }
+    Ok(0)
 }
 
+#[allow(unreachable_code)]
 /// Changes the current working directory to the specified path.
 pub fn set_current_uid(uid: u32) -> io::Result<()> {
-    crate::permission::set_current_uid(uid)
+    #[cfg(feature = "permission")]
+    {
+        return crate::permission::set_current_uid(uid);
+    }
+    Ok(())
 }

@@ -19,7 +19,7 @@ myfs = ["dep:crate_interface"]
 permission = ["dep:permission"]
 use-ramdisk = []
 
-default = ["devfs", "ramfs", "fatfs", "procfs", "sysfs", "permission"]
+default = ["devfs", "ramfs", "fatfs", "procfs", "sysfs"]
 
 [dependencies]
 log = "0.4"

@@ -36,6 +36,7 @@ pub mod fops;
 mod open_options;
 
 use axdriver::{prelude::*, AxDeviceContainer};
+#[cfg(feature = "permission")]
 use permission::permission;
 
 /// Initializes filesystems by block devices.
