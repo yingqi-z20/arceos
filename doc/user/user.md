@@ -18,7 +18,7 @@
 ### 阻止无权限用户访问
 
 ```rust
-pub fn fops_cap(perm: VfsNodePerm, uid: u32, gid: u32) -> Cap;
+pub fn fops_cap(perm: VfsNodePerm, uid: u32, gid: u32) -> Cap
 ```
 
 根据文件权限模式、文件所有者和当前用户，给出用户是否拥有对此文件的相应权限，权限不足时系统调用返回`PermissionDenied`错误。
@@ -32,7 +32,7 @@ pub fn fops_cap(perm: VfsNodePerm, uid: u32, gid: u32) -> Cap;
 chmod命令使用八进制数来指定文件访问权限模式，`chown user:group file`指定文件所有者和所有组，二者都是通过系统调用`ax_file_change_attr`实现，`ax_file_change_attr`在文件属于当前用户的情况下通过文件系统提供的接口`set_attr`修改文件元信息，否则返回`PermissionDenied`错误。
 
 ```rust
-pub fn ax_file_change_attr(file: &AxFileHandle, perm: u16, uid: u32, gid: u32) -> AxResult;
+pub fn ax_file_change_attr(file: &AxFileHandle, perm: u16, uid: u32, gid: u32) -> AxResult
 ```
 
 但是在fat文件系统中，`set_attr`被实现为无作用的，因此当前此命令只在ramfs上有效。
@@ -71,7 +71,7 @@ whoami命令可以查看当前进程所有用户的名称。
 ### 用户登录和切换
 
 ```rust
-pub fn ax_setuid(uid: u32) -> AxResult;
+pub fn ax_setuid(uid: u32) -> AxResult
 ```
 
 切换用户使用su命令，对应的系统调用是`ax_setuid`，仅在使用su命令并输入正确口令才允许切换为其他用户身份。在切换用户和登录时，由内核接管标准输入输出，输入的口令将不会显示出来。
