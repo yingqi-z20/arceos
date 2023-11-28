@@ -16,6 +16,7 @@ irq = ["axfeat/irq"]
 alloc = ["dep:axalloc", "axfeat/alloc"]
 multitask = ["axtask/multitask", "axfeat/multitask"]
 fs = ["dep:axfs", "axfeat/fs"]
+user = ["dep:axuser"]
 net = ["dep:axnet", "axfeat/net"]
 display = ["dep:axdisplay", "axfeat/display"]
 
@@ -35,5 +36,6 @@ axhal = { path = "../../modules/axhal" }
 axalloc = { path = "../../modules/axalloc", optional = true }
 axtask = { path = "../../modules/axtask", optional = true }
 axfs = { path = "../../modules/axfs", optional = true }
+axuser = { path = "../../modules/axuser", optional = true }
 axnet = { path = "../../modules/axnet", optional = true }
 axdisplay = { path = "../../modules/axdisplay", optional = true }

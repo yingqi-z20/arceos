@@ -1,7 +1,7 @@
 use alloc::string::String;
 use axerrno::AxError::PermissionDenied;
 use axerrno::{ax_err, AxError, AxResult};
-use axfs::api::{current_uid, user_name};
+use axfs::api::current_uid;
 use axfs::fops::{Directory, File, FileAttr, OpenOptions};
 
 pub use axfs::fops::DirEntry as AxDirEntry;
@@ -13,6 +13,8 @@ pub use axio::SeekFrom as AxSeekFrom;
 
 #[cfg(feature = "myfs")]
 pub use axfs::fops::{Disk as AxDisk, MyFileSystemIf};
+#[cfg(feature = "user")]
+use axuser::api::user_name;
 
 /// A handle to an opened file.
 pub struct AxFileHandle(File);
@@ -108,173 +110,190 @@ pub fn ax_getuid() -> AxResult<u32> {
     current_uid()
 }
 
+#[allow(unreachable_code)]
 pub fn ax_setuid(uid: u32) -> AxResult {
     if current_uid().is_ok_and(|uid| (uid == 0)) {
         return axfs::api::set_current_uid(uid);
     }
-    axhal::console::putchar(b'P');
-    axhal::console::putchar(b'a');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b'w');
-    axhal::console::putchar(b'o');
-    axhal::console::putchar(b'r');
-    axhal::console::putchar(b'd');
-    axhal::console::putchar(b':');
-    axhal::console::putchar(b' ');
-    let password = get_password();
-    if !axfs::api::verify(uid, password) {
-        return Err(AxError::AuthenticationFailure);
+    #[cfg(feature = "user")]
+    {
+        axhal::console::putchar(b'P');
+        axhal::console::putchar(b'a');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b'w');
+        axhal::console::putchar(b'o');
+        axhal::console::putchar(b'r');
+        axhal::console::putchar(b'd');
+        axhal::console::putchar(b':');
+        axhal::console::putchar(b' ');
+        let password = get_password();
+        if !axuser::api::verify(uid, password) {
+            return Err(AxError::AuthenticationFailure);
+        }
+        return axfs::api::set_current_uid(uid);
     }
-    axfs::api::set_current_uid(uid)
+    Err(PermissionDenied)
 }
 
+#[allow(unreachable_code)]
 pub fn sudo() -> AxResult {
     let uid = current_uid()?;
     if uid == 0 {
         return Ok(());
     }
-    let name = user_name(uid);
-    axhal::console::putchar(b'[');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b'u');
-    axhal::console::putchar(b'd');
-    axhal::console::putchar(b'o');
-    axhal::console::putchar(b']');
-    axhal::console::putchar(b' ');
-    axhal::console::putchar(b'p');
-    axhal::console::putchar(b'a');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b'w');
-    axhal::console::putchar(b'o');
-    axhal::console::putchar(b'r');
-    axhal::console::putchar(b'd');
-    axhal::console::putchar(b' ');
-    axhal::console::putchar(b'f');
-    axhal::console::putchar(b'o');
-    axhal::console::putchar(b'r');
-    axhal::console::putchar(b' ');
+    #[cfg(not(feature = "user"))]
+    { return Err(PermissionDenied); }
+    #[cfg(feature = "user")]
+    {
+        let name = user_name(uid);
+        axhal::console::putchar(b'[');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b'u');
+        axhal::console::putchar(b'd');
+        axhal::console::putchar(b'o');
+        axhal::console::putchar(b']');
+        axhal::console::putchar(b' ');
+        axhal::console::putchar(b'p');
+        axhal::console::putchar(b'a');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b'w');
+        axhal::console::putchar(b'o');
+        axhal::console::putchar(b'r');
+        axhal::console::putchar(b'd');
+        axhal::console::putchar(b' ');
+        axhal::console::putchar(b'f');
+        axhal::console::putchar(b'o');
+        axhal::console::putchar(b'r');
+        axhal::console::putchar(b' ');
 
-    for c in name.as_str().as_bytes() {
-        axhal::console::putchar(*c);
-    }
-
-    axhal::console::putchar(b' ');
-    axhal::console::putchar(b':');
-    axhal::console::putchar(b' ');
-    let password = get_password();
-    if axfs::api::is_sudoer(name) {
-        if !axfs::api::verify(uid, password) {
-            return Err(AxError::AuthenticationFailure);
-        } else {
-            axfs::api::set_current_uid(0)
+        for c in name.as_str().as_bytes() {
+            axhal::console::putchar(*c);
         }
-    } else {
-        Err(PermissionDenied)
+
+        axhal::console::putchar(b' ');
+        axhal::console::putchar(b':');
+        axhal::console::putchar(b' ');
+        let password = get_password();
+        if axuser::api::is_sudoer(name) {
+            if !axuser::api::verify(uid, password) {
+                return Err(AxError::AuthenticationFailure);
+            } else {
+                axfs::api::set_current_uid(0)
+            }
+        } else {
+            Err(PermissionDenied)
+        }
     }
 }
 
+#[allow(unreachable_code)]
 pub fn ax_setpassword() -> AxResult {
-    let name = user_name(current_uid().unwrap_or(0));
-    axhal::console::putchar(b'C');
-    axhal::console::putchar(b'h');
-    axhal::console::putchar(b'a');
-    axhal::console::putchar(b'n');
-    axhal::console::putchar(b'g');
-    axhal::console::putchar(b'i');
-    axhal::console::putchar(b'n');
-    axhal::console::putchar(b'g');
-    axhal::console::putchar(b' ');
-    axhal::console::putchar(b'p');
-    axhal::console::putchar(b'a');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b'w');
-    axhal::console::putchar(b'o');
-    axhal::console::putchar(b'r');
-    axhal::console::putchar(b'd');
-    axhal::console::putchar(b' ');
-    axhal::console::putchar(b'f');
-    axhal::console::putchar(b'o');
-    axhal::console::putchar(b'r');
-    axhal::console::putchar(b' ');
+    #[cfg(feature = "user")]
+    {
+        let name = user_name(current_uid().unwrap_or(0));
+        axhal::console::putchar(b'C');
+        axhal::console::putchar(b'h');
+        axhal::console::putchar(b'a');
+        axhal::console::putchar(b'n');
+        axhal::console::putchar(b'g');
+        axhal::console::putchar(b'i');
+        axhal::console::putchar(b'n');
+        axhal::console::putchar(b'g');
+        axhal::console::putchar(b' ');
+        axhal::console::putchar(b'p');
+        axhal::console::putchar(b'a');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b'w');
+        axhal::console::putchar(b'o');
+        axhal::console::putchar(b'r');
+        axhal::console::putchar(b'd');
+        axhal::console::putchar(b' ');
+        axhal::console::putchar(b'f');
+        axhal::console::putchar(b'o');
+        axhal::console::putchar(b'r');
+        axhal::console::putchar(b' ');
 
-    for c in name.as_str().as_bytes() {
-        axhal::console::putchar(*c);
-    }
+        for c in name.as_str().as_bytes() {
+            axhal::console::putchar(*c);
+        }
 
-    axhal::console::putchar(b'.');
-    axhal::console::putchar(b'\n');
-    axhal::console::putchar(b'C');
-    axhal::console::putchar(b'u');
-    axhal::console::putchar(b'r');
-    axhal::console::putchar(b'r');
-    axhal::console::putchar(b'e');
-    axhal::console::putchar(b'n');
-    axhal::console::putchar(b't');
-    axhal::console::putchar(b' ');
-    axhal::console::putchar(b'p');
-    axhal::console::putchar(b'a');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b'w');
-    axhal::console::putchar(b'o');
-    axhal::console::putchar(b'r');
-    axhal::console::putchar(b'd');
-    axhal::console::putchar(b':');
-    axhal::console::putchar(b' ');
-    let password = get_password();
-    if !axfs::api::verify(current_uid().unwrap_or(0), password) {
+        axhal::console::putchar(b'.');
+        axhal::console::putchar(b'\n');
+        axhal::console::putchar(b'C');
+        axhal::console::putchar(b'u');
+        axhal::console::putchar(b'r');
+        axhal::console::putchar(b'r');
+        axhal::console::putchar(b'e');
+        axhal::console::putchar(b'n');
+        axhal::console::putchar(b't');
+        axhal::console::putchar(b' ');
+        axhal::console::putchar(b'p');
+        axhal::console::putchar(b'a');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b'w');
+        axhal::console::putchar(b'o');
+        axhal::console::putchar(b'r');
+        axhal::console::putchar(b'd');
+        axhal::console::putchar(b':');
+        axhal::console::putchar(b' ');
+        let password = get_password();
+        if !axuser::api::verify(current_uid().unwrap_or(0), password) {
+            return Err(AxError::AuthenticationFailure);
+        }
+        axhal::console::putchar(b'N');
+        axhal::console::putchar(b'e');
+        axhal::console::putchar(b'w');
+        axhal::console::putchar(b' ');
+        axhal::console::putchar(b'p');
+        axhal::console::putchar(b'a');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b'w');
+        axhal::console::putchar(b'o');
+        axhal::console::putchar(b'r');
+        axhal::console::putchar(b'd');
+        axhal::console::putchar(b':');
+        axhal::console::putchar(b' ');
+        let password1 = get_password();
+        axhal::console::putchar(b'R');
+        axhal::console::putchar(b'e');
+        axhal::console::putchar(b't');
+        axhal::console::putchar(b'y');
+        axhal::console::putchar(b'p');
+        axhal::console::putchar(b'e');
+        axhal::console::putchar(b' ');
+        axhal::console::putchar(b'n');
+        axhal::console::putchar(b'e');
+        axhal::console::putchar(b'w');
+        axhal::console::putchar(b' ');
+        axhal::console::putchar(b'p');
+        axhal::console::putchar(b'a');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b's');
+        axhal::console::putchar(b'w');
+        axhal::console::putchar(b'o');
+        axhal::console::putchar(b'r');
+        axhal::console::putchar(b'd');
+        axhal::console::putchar(b':');
+        axhal::console::putchar(b' ');
+        let password2 = get_password();
+        if password1 == password2 {
+            return axuser::api::set_password(password1);
+        }
+        let pnm = "Sorry, passwords do not match.\n";
+        for c in pnm.as_bytes() {
+            axhal::console::putchar(*c);
+        }
         return Err(AxError::AuthenticationFailure);
     }
-    axhal::console::putchar(b'N');
-    axhal::console::putchar(b'e');
-    axhal::console::putchar(b'w');
-    axhal::console::putchar(b' ');
-    axhal::console::putchar(b'p');
-    axhal::console::putchar(b'a');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b'w');
-    axhal::console::putchar(b'o');
-    axhal::console::putchar(b'r');
-    axhal::console::putchar(b'd');
-    axhal::console::putchar(b':');
-    axhal::console::putchar(b' ');
-    let password1 = get_password();
-    axhal::console::putchar(b'R');
-    axhal::console::putchar(b'e');
-    axhal::console::putchar(b't');
-    axhal::console::putchar(b'y');
-    axhal::console::putchar(b'p');
-    axhal::console::putchar(b'e');
-    axhal::console::putchar(b' ');
-    axhal::console::putchar(b'n');
-    axhal::console::putchar(b'e');
-    axhal::console::putchar(b'w');
-    axhal::console::putchar(b' ');
-    axhal::console::putchar(b'p');
-    axhal::console::putchar(b'a');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b's');
-    axhal::console::putchar(b'w');
-    axhal::console::putchar(b'o');
-    axhal::console::putchar(b'r');
-    axhal::console::putchar(b'd');
-    axhal::console::putchar(b':');
-    axhal::console::putchar(b' ');
-    let password2 = get_password();
-    if password1 == password2 {
-        return axfs::api::set_password(password1);
-    }
-    let pnm = "Sorry, passwords do not match.\n";
-    for c in pnm.as_bytes() {
-        axhal::console::putchar(*c);
-    }
-    Err(AxError::AuthenticationFailure)
+    Err(PermissionDenied)
 }
 
+#[allow(unused)]
 fn get_password() -> String {
     let mut password = String::new();
     const DL: u8 = b'\x7f';

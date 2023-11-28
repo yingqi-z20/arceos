@@ -90,35 +90,10 @@ pub fn rename(old: &str, new: &str) -> io::Result<()> {
 
 /// Returns the current user id as a [`u32`].
 pub fn current_uid() -> io::Result<u32> {
-    crate::user::current_uid()
+    crate::permission::current_uid()
 }
 
 /// Changes the current working directory to the specified path.
 pub fn set_current_uid(uid: u32) -> io::Result<()> {
-    crate::user::set_current_uid(uid)
-}
-
-/// Verify the password.
-pub fn verify(uid: u32, password: String) -> bool {
-    crate::user::verify(uid, password)
-}
-
-/// Returns the current user name as a [`String`].
-pub fn user_name(uid: u32) -> String {
-    crate::user::user_name(uid)
-}
-
-/// Is the user sudoer.
-pub fn is_sudoer(name: String) -> bool {
-    crate::user::is_sudoer(name)
-}
-
-/// Returns the current user password as a [`String`].
-pub fn set_password(password: String) -> io::Result<()> {
-    crate::user::set_password(password)
-}
-
-/// Returns the name's user id.
-pub fn user_id(name: String) -> u32 {
-    crate::user::user_id(name)
+    crate::permission::set_current_uid(uid)
 }

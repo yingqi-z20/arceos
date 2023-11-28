@@ -197,6 +197,7 @@ dependencies = [
  "axnet",
  "axruntime",
  "axtask",
+ "axuser",
 ]
 
 [[package]]
@@ -331,6 +332,7 @@ dependencies = [
  "axruntime",
  "axsync",
  "axtask",
+ "axuser",
  "spinlock",
 ]
 
@@ -353,6 +355,7 @@ dependencies = [
  "fatfs",
  "lazy_init",
  "log",
+ "permission",
 ]
 
 [[package]]
@@ -477,6 +480,7 @@ dependencies = [
  "axlog",
  "axnet",
  "axtask",
+ "axuser",
  "crate_interface",
  "kernel_guard",
  "lazy_init",
@@ -522,6 +526,17 @@ dependencies = [
  "scheduler",
  "spinlock",
  "timer_list",
+]
+
+[[package]]
+name = "axuser"
+version = "0.1.0"
+dependencies = [
+ "axerrno",
+ "axfs",
+ "axio",
+ "log",
+ "permission",
 ]
 
 [[package]]
@@ -1453,6 +1468,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.29",
+]
+
+[[package]]
+name = "permission"
+version = "0.1.0"
+dependencies = [
+ "axerrno",
+ "axfs_vfs",
+ "axsync",
+ "capability",
+ "log",
 ]
 
 [[package]]

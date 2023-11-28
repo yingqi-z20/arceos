@@ -33,10 +33,10 @@ mod root;
 
 pub mod api;
 pub mod fops;
-mod sha1;
-mod user;
+mod open_options;
 
 use axdriver::{prelude::*, AxDeviceContainer};
+use permission::permission;
 
 /// Initializes filesystems by block devices.
 pub fn init_filesystems(mut blk_devs: AxDeviceContainer<AxBlockDevice>) {

@@ -10,7 +10,7 @@ use capability::Cap;
 use lazy_init::LazyInit;
 
 use crate::fops::perm_to_cap;
-use crate::user::{current_gid, current_uid};
+use crate::permission::{current_gid, current_uid};
 use crate::{api::FileType, fs, mounts};
 
 static CURRENT_DIR_PATH: Mutex<String> = Mutex::new(String::new());

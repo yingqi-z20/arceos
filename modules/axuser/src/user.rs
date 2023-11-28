@@ -1,33 +1,11 @@
-use crate::fops::{File, OpenOptions};
 use crate::sha1::sha1;
 use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use axerrno::{AxError, AxResult};
-use axsync::Mutex;
-
-static UID: Mutex<u32> = Mutex::new(0);
-
-pub(crate) fn current_uid() -> AxResult<u32> {
-    #[cfg(not(feature = "user"))]
-    {
-        Ok(0)
-    }
-    Ok(*UID.lock())
-}
-
-pub(crate) fn current_gid() -> AxResult<u32> {
-    #[cfg(not(feature = "user"))]
-    {
-        Ok(0)
-    }
-    current_uid()
-}
-
-pub(crate) fn set_current_uid(uid: u32) -> AxResult {
-    *UID.lock() = uid;
-    Ok(())
-}
+use axfs::fops::{File, OpenOptions};
+use log::debug;
+use permission::permission::{current_uid, set_current_uid};
 
 pub struct UserInfo {
     pub username: String,
@@ -52,7 +30,6 @@ fn user_list() -> AxResult<BTreeMap<u32, UserInfo>> {
         }
         content += String::from_utf8_lossy(&(buf[..n])).as_ref();
     }
-    debug!("{}", content);
     let lines: Vec<&str> = content.split('\n').collect();
     let mut info = BTreeMap::new();
     for line in lines {
@@ -87,7 +64,7 @@ fn user_list() -> AxResult<BTreeMap<u32, UserInfo>> {
     Ok(info)
 }
 
-pub(crate) fn user_name(uid: u32) -> String {
+pub fn user_name(uid: u32) -> String {
     let ul = user_list();
     if let Err(_e) = ul {
         debug!("{}", _e);
@@ -99,7 +76,7 @@ pub(crate) fn user_name(uid: u32) -> String {
     }
 }
 
-pub(crate) fn user_id(name: String) -> u32 {
+pub fn user_id(name: String) -> u32 {
     let ul = user_list();
     if let Err(_e) = ul {
         debug!("{}", _e);
@@ -114,7 +91,7 @@ pub(crate) fn user_id(name: String) -> u32 {
     }
 }
 
-pub(crate) fn is_sudoer(name: String) -> bool {
+pub fn is_sudoer(name: String) -> bool {
     let cuid = current_uid().unwrap();
     set_current_uid(0).unwrap();
     let mut opt = OpenOptions::new();
@@ -149,11 +126,7 @@ pub(crate) fn is_sudoer(name: String) -> bool {
     false
 }
 
-pub(crate) fn verify(uid: u32, password: String) -> bool {
-    #[cfg(not(feature = "user"))]
-    {
-        t
-    }
+pub fn verify(uid: u32, password: String) -> bool {
     let cuid = current_uid().unwrap();
     set_current_uid(0).unwrap();
     let mut opt = OpenOptions::new();
@@ -194,7 +167,7 @@ pub(crate) fn verify(uid: u32, password: String) -> bool {
     true
 }
 
-pub(crate) fn set_password(password: String) -> AxResult {
+pub fn set_password(password: String) -> AxResult {
     let cuid = current_uid().unwrap();
     set_current_uid(0).unwrap();
     let mut opt = OpenOptions::new();

@@ -32,6 +32,8 @@ mod mp;
 
 #[cfg(feature = "smp")]
 pub use self::mp::rust_main_secondary;
+
+#[cfg(feature = "user")]
 use alloc::string::String;
 
 const LOGO: &str = r#"
@@ -124,7 +126,8 @@ pub extern "C" fn rust_main(cpu_id: usize, dtb: usize) -> ! {
     );
 
     axlog::init();
-    axlog::set_max_level(option_env!("AX_LOG").unwrap_or("")); // no effect if set `log-level-*` features
+    axlog::set_max_level(option_env!("AX_LOG").unwrap_or(""));
+    // no effect if set `log-level-*` features
     info!("Logging is enabled.");
     info!("Primary CPU {} started, dtb = {:#x}.", cpu_id, dtb);
 
@@ -157,7 +160,7 @@ pub extern "C" fn rust_main(cpu_id: usize, dtb: usize) -> ! {
     #[cfg(any(feature = "fs", feature = "net", feature = "display"))]
     {
         #[allow(unused_variables)]
-        let all_devices = axdriver::init_drivers();
+            let all_devices = axdriver::init_drivers();
 
         #[cfg(feature = "fs")]
         axfs::init_filesystems(all_devices.block);
@@ -214,7 +217,7 @@ pub fn terminate() {
 
 pub fn restart(exit_code: i32) {
     info!("main task exited: exit_code={}", exit_code as i8);
-    #[cfg(feature = "fs")]
+    #[cfg(feature = "user")]
     {
         axfs::api::set_current_uid(0).unwrap();
         let mn = "arceos login: ";
@@ -250,8 +253,8 @@ pub fn restart(exit_code: i32) {
                 axhal::console::putchar(*c);
             }
             let password = get_password();
-            let uid = axfs::api::user_id(name);
-            if axfs::api::verify(uid, password) {
+            let uid = axuser::api::user_id(name);
+            if axuser::api::verify(uid, password) {
                 axfs::api::set_current_uid(uid).expect("set_current_uid failed");
                 break;
             }

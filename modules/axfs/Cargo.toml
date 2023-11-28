@@ -16,10 +16,10 @@ procfs = ["dep:axfs_ramfs"]
 sysfs = ["dep:axfs_ramfs"]
 fatfs = ["dep:fatfs"]
 myfs = ["dep:crate_interface"]
-user = []
+permission = ["dep:permission"]
 use-ramdisk = []
 
-default = ["devfs", "ramfs", "fatfs", "procfs", "sysfs", "user"]
+default = ["devfs", "ramfs", "fatfs", "procfs", "sysfs", "permission"]
 
 [dependencies]
 log = "0.4"
@@ -35,13 +35,14 @@ axfs_ramfs = { path = "../../crates/axfs_ramfs", optional = true }
 axdriver = { path = "../axdriver", features = ["block"] }
 axsync = { path = "../axsync" }
 crate_interface = { path = "../../crates/crate_interface", optional = true }
+permission = { path = "../../crates/permission", optional = true }
 
 [dependencies.fatfs]
 git = "https://github.com/rafalh/rust-fatfs"
 rev = "a3a834e"
 optional = true
 default-features = false
-features = [ # no std
+features = [# no std
     "alloc",
     "lfn",
     "log_level_trace",

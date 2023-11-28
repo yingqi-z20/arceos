@@ -37,7 +37,7 @@ pub use self::mem::*;
 pub use self::stdio::*;
 pub use self::task::*;
 
-pub use axruntime::restart as ax_restart;
-pub use axruntime::terminate as ax_terminate;
 pub use axhal::time::{current_time as ax_current_time, TimeValue as AxTimeValue};
 pub use axio::PollState as AxPollState;
+pub use axruntime::restart as ax_restart;
+pub use axruntime::terminate as ax_terminate;

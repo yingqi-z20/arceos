@@ -1,0 +1,17 @@
+[package]
+name = "axuser"
+version = "0.1.0"
+edition = "2021"
+authors = ["Yingqi Zhang <1501609820@qq.com>"]
+description = "user infomation management system used by ArceOS"
+license = "GPL-3.0-or-later OR Apache-2.0"
+homepage = "https://github.com/yingqi-z20/arceos"
+repository = "https://github.com/yingqi-z20/arceos/tree/main/modules/axuser"
+documentation = "https://github.com/yingqi-z20/arceos/tree/main/doc"
+
+[dependencies]
+axerrno = { path = "../../crates/axerrno" }
+axio = { path = "../../crates/axio" }
+permission = { path = "../../crates/permission"}
+axfs = { path = "../axfs" }
+log = "0.4"

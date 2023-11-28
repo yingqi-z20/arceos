@@ -76,7 +76,14 @@ impl VfsNodeOps for FileWrapper<'static> {
         let blocks = (size + BLOCK_SIZE as u64 - 1) / BLOCK_SIZE as u64;
         // FAT fs doesn't support permissions, we just set everything to 777
         let perm = VfsNodePerm::from_bits_truncate(0o777);
-        Ok(VfsNodeAttr::new(perm, 0, 0, VfsNodeType::File, size, blocks))
+        Ok(VfsNodeAttr::new(
+            perm,
+            0,
+            0,
+            VfsNodeType::File,
+            size,
+            blocks,
+        ))
     }
 
     fn read_at(&self, offset: u64, buf: &mut [u8]) -> VfsResult<usize> {
@@ -263,7 +270,7 @@ impl Seek for Disk {
             SeekFrom::Current(off) => self.position().checked_add_signed(off),
             SeekFrom::End(off) => size.checked_add_signed(off),
         }
-            .ok_or(())?;
+        .ok_or(())?;
         if new_pos > size {
             warn!("Seek beyond the end of the block device");
         }

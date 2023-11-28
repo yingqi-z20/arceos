@@ -38,7 +38,7 @@ members = [
     "crates/ext2fs",
     "crates/ext2fs_fuse",
     "crates/fs_utils",
-
+    "crates/permission",
     "modules/axalloc",
     "modules/axconfig",
     "modules/axdisplay",
@@ -50,14 +50,12 @@ members = [
     "modules/axruntime",
     "modules/axsync",
     "modules/axtask",
-
+    "modules/axuser",
     "api/axfeat",
     "api/arceos_api",
     "api/arceos_posix_api",
-
     "ulib/axstd",
     "ulib/axlibc",
-
     "apps/display",
     "apps/exception",
     "apps/helloworld",

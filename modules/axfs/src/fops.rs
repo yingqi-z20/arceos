@@ -5,12 +5,12 @@ use axfs_vfs::{VfsError, VfsNodeRef};
 use axio::SeekFrom;
 use capability::{Cap, WithCap};
 use core::fmt;
+use permission::permission::fops_cap;
 
 #[cfg(feature = "myfs")]
 pub use crate::dev::Disk;
 #[cfg(feature = "myfs")]
 pub use crate::fs::myfs::MyFileSystemIf;
-use crate::user::{current_gid, current_uid};
 
 /// Alias of [`axfs_vfs::VfsNodeType`].
 pub type FileType = axfs_vfs::VfsNodeType;
@@ -35,68 +35,7 @@ pub struct Directory {
     entry_idx: usize,
 }
 
-/// Options and flags which can be used to configure how a file is opened.
-#[derive(Clone)]
-pub struct OpenOptions {
-    // generic
-    read: bool,
-    write: bool,
-    execute: bool,
-    append: bool,
-    truncate: bool,
-    create: bool,
-    create_new: bool,
-    // system-specific
-    _custom_flags: i32,
-    _mode: u32,
-}
-
-impl OpenOptions {
-    /// Creates a blank new set of options ready for configuration.
-    pub const fn new() -> Self {
-        Self {
-            // generic
-            read: false,
-            write: false,
-            execute: false,
-            append: false,
-            truncate: false,
-            create: false,
-            create_new: false,
-            // system-specific
-            _custom_flags: 0,
-            _mode: 0o666,
-        }
-    }
-    /// Sets the option for read access.
-    pub fn read(&mut self, read: bool) {
-        self.read = read;
-    }
-    /// Sets the option for write access.
-    pub fn write(&mut self, write: bool) {
-        self.write = write;
-    }
-    /// Sets the option for execute access.
-    pub fn execute(&mut self, execute: bool) {
-        self.execute = execute;
-    }
-    /// Sets the option for the append mode.
-    pub fn append(&mut self, append: bool) {
-        self.append = append;
-    }
-    /// Sets the option for truncating a previous file.
-    pub fn truncate(&mut self, truncate: bool) {
-        self.truncate = truncate;
-    }
-    /// Sets the option to create a new file, or open it if it already exists.
-    pub fn create(&mut self, create: bool) {
-        self.create = create;
-    }
-    /// Sets the option to create a new file, failing if it already exists.
-    pub fn create_new(&mut self, create_new: bool) {
-        self.create_new = create_new;
-    }
-}
+pub type OpenOptions = crate::open_options::OpenOptions;
 
 impl File {
     fn _open_at(dir: Option<&VfsNodeRef>, path: &str, opts: &OpenOptions) -> AxResult<Self> {
@@ -397,42 +336,13 @@ impl From<&OpenOptions> for Cap {
 }
 
 pub fn perm_to_cap(perm: FilePerm, uid: u32, gid: u32) -> Cap {
-    let mut cap = Cap::empty();
-    #[cfg(not(feature = "user"))]
+    #[cfg(not(feature = "permission"))]
     {
+        let mut cap = Cap::empty();
         cap |= Cap::READ;
         cap |= Cap::WRITE;
         cap |= Cap::EXECUTE;
         return cap;
     }
-    let current_uid = current_uid().unwrap();
-    let current_gid = current_gid().unwrap();
-    if current_uid == 0 {
-        cap |= Cap::READ;
-        cap |= Cap::WRITE;
-        cap |= Cap::EXECUTE;
-        return cap;
-    }
-    if current_uid == uid && current_gid == gid {
-        if perm.owner_readable() {
-            cap |= Cap::READ;
-        }
-        if perm.owner_writable() {
-            cap |= Cap::WRITE;
-        }
-        if perm.owner_executable() {
-            cap |= Cap::EXECUTE;
-        }
-    } else {
-        if perm.other_readable() {
-            cap |= Cap::READ;
-        }
-        if perm.other_writable() {
-            cap |= Cap::WRITE;
-        }
-        if perm.other_executable() {
-            cap |= Cap::EXECUTE;
-        }
-    }
-    cap
+    fops_cap(perm, uid, gid)
 }
