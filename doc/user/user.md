@@ -2,7 +2,7 @@
 
 **张英奇 2023-11-23**
 
-本项目实现了 arceOS 上的一个用户权限管理模块，支持与 linux 功能基本一致的`halt`、`exit`、`ll`、`chmod`、`chown`、`whoami`、`su`、`sudo`、`adduser`、`deluser`、`passwd`等命令。
+本项目实现了 ArceOS 上的一个用户权限管理模块，支持与 linux 功能基本一致的`halt`、`exit`、`ll`、`chmod`、`chown`、`whoami`、`su`、`sudo`、`adduser`、`deluser`、`passwd`等命令。
 
 相较于展示的ppt，本文档更关注具体的实现和使用方法。
 
@@ -56,7 +56,7 @@ static CURRENT_DIR_PATH: Mutex<String> = Mutex::new(String::new());
 static CURRENT_DIR: LazyInit<Mutex<VfsNodeRef>> = LazyInit::new();
 ```
 
-这是很不合理的，表现了unikernel去掉PCB引发的一些数据存放的问题。j进程所有者的保存也是类似的问题，只考虑单进程的情况下，我也采用了这种设计：
+这是很不合理的，表现了unikernel去掉PCB引发的一些数据存放的问题。进程所有者的保存也是类似的问题，只考虑单进程的情况下，我也采用了这种设计：
 
 ```rust
 static UID: Mutex<u32> = Mutex::new(0);
